@@ -1,0 +1,75 @@
+# Phase 4: FastAPI Core - Architecture
+# Technical design for FastAPI application foundation
+
+phase_info:
+  id: 4
+  name: "FastAPI Core"
+  focus: "Web application architecture and middleware design"
+  
+architectural_decisions:
+  application_structure:
+    fastapi_configuration:
+      - "Single FastAPI instance with metadata configuration"
+      - "Router-based modular endpoint organization"
+      - "Dependency injection for cross-cutting concerns"
+    middleware_stack:
+      - "CORS middleware for development and testing"
+      - "Request correlation ID middleware for tracing"
+      - "Structured logging middleware for observability"
+      - "Authentication middleware for API key validation"
+      
+  configuration_architecture:
+    settings_management:
+      - "Pydantic BaseSettings for type-safe configuration"
+      - "Environment variable-based configuration"
+      - "Configuration validation at application startup"
+    secret_handling:
+      - "Discord bot token via DISCORD_BOT_TOKEN env var"
+      - "API key via API_KEY env var"
+      - "No default values for sensitive configuration"
+      
+  error_handling_design:
+    exception_hierarchy:
+      - "Custom exception classes for business logic errors"
+      - "HTTPException for HTTP-specific errors"
+      - "Global exception handler for unhandled exceptions"
+    error_response_format:
+      - "Consistent error response schema across all endpoints"
+      - "Error codes for programmatic error handling"
+      - "Detailed error messages for debugging"
+      
+technical_specifications:
+  middleware_implementation:
+    correlation_id:
+      - "Generate UUID4 for each request"
+      - "Include in response headers and logs"
+      - "Propagate through async context"
+    logging_configuration:
+      - "Structured JSON logging for production"
+      - "Request/response logging with correlation IDs"
+      - "Configurable log levels via environment"
+      
+  health_check_design:
+    endpoint_specification:
+      - "GET /health endpoint with no authentication required"
+      - "Response includes service version, timestamp, status"
+      - "Dependency health checks (Discord connectivity)"
+    monitoring_integration:
+      - "Health check suitable for container orchestration"
+      - "Graceful degradation indicators"
+      - "Performance metrics inclusion"
+      
+  authentication_framework:
+    api_key_validation:
+      - "X-API-Key header extraction and validation"
+      - "Configurable API key via environment variable"
+      - "Dependency injection for protected endpoints"
+    security_considerations:
+      - "Rate limiting per API key"
+      - "Request validation and sanitization"
+      - "Security headers in responses"
+      
+ai_parsing_usage:
+  app_structure: "architectural_decisions.application_structure"
+  config_design: "architectural_decisions.configuration_architecture"
+  implementation_specs: "technical_specifications"

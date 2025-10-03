@@ -1,0 +1,55 @@
+CONSILIUM RELAY - PHASE PROGRESS NOTES
+======================================
+
+Phase 0: Foundation & AI Orientation - COMPLETED
+- ✓ All 7 foundation YAML documents created
+- ✓ Project mission and MVP definition established
+- ✓ AI agent rules and coding standards defined
+- ✓ Technical constraints and architecture decisions documented
+- ✓ Multi-AI collaboration patterns specified
+- ✓ Phase progression roadmap created
+- ✓ Validation framework and quality gates defined
+- ✓ Copilot instructions and automation rules established
+
+Key Context for AI Agents:
+- Single-user MVP focused on Chairman + Claude + ChatGPT collaboration
+- Discord as message board, FastAPI as relay service
+- Python 3.11, async-first architecture, stateless design
+- OpenAPI schema as source of truth for implementation
+- Token bucket rate limiting for Discord API compliance
+- Message attribution via Discord embed footers
+- 9-phase progression with clear dependencies and validation
+
+Next Phase: Phase 1 - System Contracts & API Design
+Dependencies: Phase 0 complete ✓
+Objective: Define API contracts as source of truth
+Deliverables: 01_BLUEPRINT.yml, 01_ARCHITECTURE.yml, 01_IMPLEMENTATION.yml
+
+---
+
+Phase 1: System Contracts & API Design - NOT STARTED
+Phase 2: Repository Scaffold - NOT STARTED  
+Phase 3: Discord Infrastructure - NOT STARTED
+Phase 4: FastAPI Core - NOT STARTED
+Phase 5: API Endpoints (Mocked) - NOT STARTED
+Phase 6: Discord Integration - NOT STARTED
+Phase 7: Essential Testing - NOT STARTED
+Phase 8: Simple Containerization - NOT STARTED
+Phase 9: MVP Deployment - NOT STARTED
+
+---
+
+IMPORTANT NOTES FOR AI AGENTS:
+1. Always read Phase 0 documents before code generation
+2. Reference OpenAPI schema as authoritative source
+3. Follow dependency graph in 00_PHASE_PROGRESSION.yml
+4. Validate completion criteria before phase transitions
+5. Update this file with progress and key decisions
+6. Use TECHNICAL_DECISIONS.yml for architectural choices
+
+MVP Success Criteria:
+- Multi-AI conversation flows through Discord successfully
+- Message attribution works correctly for all agents
+- Rate limiting prevents Discord API violations
+- System handles typical conversation loads reliably
+- Chairman can observe and participate in AI discussions

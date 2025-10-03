@@ -1,0 +1,64 @@
+# Phase 5: API Endpoints (Mocked) - Blueprint
+# Requirements and objectives for implementing API contracts with mocks
+
+phase_info:
+  id: 5
+  name: "API Endpoints (Mocked)"
+  purpose: "Implement API contracts with mocks"
+  dependencies: ["phase_4", "phase_1"]
+  
+objectives:
+  primary:
+    - "Implement all OpenAPI endpoints with realistic mocks"
+    - "Validate request/response schemas"
+    - "Test API contract compliance"
+    - "Establish endpoint patterns and conventions"
+  secondary:
+    - "Create mock data generators"
+    - "Implement rate limiting middleware"
+    - "Add comprehensive input validation"
+    
+requirements:
+  endpoint_implementation:
+    thread_management:
+      - "POST /threads - Create thread with mock Discord ID"
+      - "GET /threads/{id} - Return thread metadata"
+      - "GET /threads - List threads (optional for MVP)"
+    message_handling:
+      - "POST /threads/{id}/messages - Post message with mock response"
+      - "GET /threads/{id}/messages - Return paginated message list"
+    authentication:
+      - "All endpoints require valid API key"
+      - "Return 401 for missing/invalid authentication"
+      
+  mock_behavior:
+    realistic_responses:
+      - "Generate Discord-like IDs (snowflake format)"
+      - "Return proper timestamps and metadata"
+      - "Simulate message attribution data"
+    error_simulation:
+      - "Return 404 for non-existent threads/messages"
+      - "Return 400 for invalid request schemas"
+      - "Return 429 for rate limit violations"
+    data_consistency:
+      - "Mock data persists within request session"
+      - "Thread/message relationships maintained"
+      
+deliverables:
+  - "Complete API endpoint implementations with mocks"
+  - "Request/response validation using Pydantic models"
+  - "Mock data generation utilities"
+  - "Rate limiting middleware implementation"
+  - "Comprehensive error handling for all endpoints"
+  
+validation_criteria:
+  - "All OpenAPI endpoints respond correctly"
+  - "Request/response schemas match OpenAPI specification"
+  - "Authentication works across all protected endpoints"
+  - "Error responses follow established patterns"
+  - "Rate limiting returns appropriate 429 responses"
+  
+ai_parsing_usage:
+  endpoint_specifications: "requirements.endpoint_implementation"
+  mock_requirements: "requirements.mock_behavior"
+  validation_targets: "validation_criteria"

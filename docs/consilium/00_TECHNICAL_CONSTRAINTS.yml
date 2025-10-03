@@ -1,0 +1,60 @@
+# Phase 0: Technical Constraints and Architecture Decisions
+# Technology stack and architectural boundaries for MVP
+
+technology_stack:
+  runtime: "python-3.11"
+  framework: "fastapi==0.104.1"
+  discord_library: "discord.py==2.3.2"
+  validation: "pydantic==2.4.2"
+  server: "uvicorn==0.24.0"
+  testing: "pytest==7.4.3"
+  database: "none - stateless relay service"
+  
+architectural_principles:
+  async_first: true
+  single_user: true
+  mvp_focused: true
+  stateless_design: true
+  fail_fast: true
+  observable: true
+  
+performance_requirements:
+  response_time:
+    api_endpoints: "<200ms p95"
+    discord_message_posting: "<500ms p95"
+  throughput:
+    concurrent_conversations: "1 (Chairman focus)"
+    messages_per_minute: "<100 (conversation pace)"
+  resource_limits:
+    memory: "<512MB under normal load"
+    cpu: "<1 core sustained"
+    
+mvp_limitations:
+  features:
+    - "Single Discord server support only"
+    - "No user authentication beyond API key"
+    - "No message persistence or search"
+    - "No advanced moderation or filtering"
+  scalability:
+    - "Designed for single user (Chairman)"
+    - "No horizontal scaling considerations"
+    - "No load balancing or clustering"
+  security:
+    - "Basic API key authentication only"
+    - "No OAuth or advanced auth flows"
+    - "Discord bot token security via environment variables"
+    
+deployment_constraints:
+  target_platforms:
+    - "Railway.app (primary)"
+    - "Fly.io (alternative)"
+    - "Local Docker development"
+  environment:
+    single_instance: true
+    container_deployment: true
+    secrets_management: "environment_variables"
+    
+ai_parsing_usage:
+  implementation_decisions: "technology_stack"
+  design_boundaries: "architectural_principles"
+  feature_scope: "mvp_limitations.features"

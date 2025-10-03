@@ -1,0 +1,39 @@
+# Phase 0: Project Mission and MVP Definition
+# Structured project data for AI agents
+
+project:
+  name: "consilium-relay"
+  description: "Multi-AI collaboration relay service using Discord as message board"
+  mvp_definition: "Chairman + Claude + ChatGPT all posting and reading messages in same Discord thread via relay service"
+  
+stakeholders:
+  chairman:
+    role: "Primary user and conversation moderator"
+    interface: "Discord UI"
+  ai_agents:
+    claude:
+      protocol: "MCP (Model Context Protocol)"
+      integration: "~/.config/claude/mcp_servers.json"
+    chatgpt:
+      protocol: "Custom GPT"
+      integration: "OpenAPI schema import"
+      
+success_criteria:
+  - "Multi-AI conversation flows through Discord successfully"
+  - "Message attribution works correctly for all agents"
+  - "Rate limiting prevents Discord API violations"
+  - "System handles typical conversation loads reliably"
+  - "Chairman can observe and participate in AI discussions"
+  
+business_context:
+  vision: "Enable structured multi-AI decision-making through transparent Discord collaboration"
+  constraints:
+    - "Single user (Chairman) focus - no multi-tenant complexity"
+    - "MVP only - no over-engineering or enterprise features"
+    - "Personal use deployment - simple and efficient"
+  timeline: "9 phases with clear progression gates"
+  
+ai_parsing_usage:
+  primary_context: "project.mvp_definition"
+  validation_target: "success_criteria"
+  constraint_reference: "business_context.constraints"

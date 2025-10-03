@@ -1,0 +1,66 @@
+# Phase 4: FastAPI Core - Blueprint
+# Requirements and objectives for minimal viable FastAPI foundation
+
+phase_info:
+  id: 4
+  name: "FastAPI Core"
+  purpose: "Minimal viable FastAPI foundation"
+  dependencies: ["phase_2", "phase_3"]
+  
+objectives:
+  primary:
+    - "Create FastAPI application structure"
+    - "Implement basic configuration management"
+    - "Set up logging and error handling"
+    - "Create health check endpoint"
+  secondary:
+    - "Configure CORS and security headers"
+    - "Set up request/response middleware"
+    - "Implement basic authentication framework"
+    
+requirements:
+  application_structure:
+    main_app:
+      - "FastAPI application instance with metadata"
+      - "Router registration and URL prefix handling"
+      - "Global middleware configuration"
+    configuration:
+      - "Environment-based settings with Pydantic BaseSettings"
+      - "Discord bot token and API key management"
+      - "Logging level and format configuration"
+    middleware:
+      - "CORS configuration for development"
+      - "Request correlation ID generation"
+      - "Structured logging for all requests"
+      
+  core_functionality:
+    health_endpoint:
+      - "GET /health endpoint with system status"
+      - "Version information and timestamp"
+      - "Dependency health checks (Discord connectivity)"
+    error_handling:
+      - "Global exception handler for unhandled exceptions"
+      - "Structured error responses matching OpenAPI schema"
+      - "HTTP status code standardization"
+    authentication:
+      - "API key validation dependency"
+      - "Security configuration for protected endpoints"
+      
+deliverables:
+  - "FastAPI application with basic structure"
+  - "Configuration management system"
+  - "Logging and error handling framework"
+  - "Health check endpoint implementation"
+  - "Authentication dependency framework"
+  
+validation_criteria:
+  - "Application starts successfully"
+  - "Health endpoint returns 200 OK with valid JSON"
+  - "Configuration loads from environment variables"
+  - "Logging outputs structured JSON format"
+  - "Authentication dependency works for protected routes"
+  
+ai_parsing_usage:
+  core_components: "requirements.application_structure"
+  functionality_specs: "requirements.core_functionality"
+  completion_targets: "validation_criteria"

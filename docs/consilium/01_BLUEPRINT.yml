@@ -1,0 +1,62 @@
+# Phase 1: System Contracts & API Design - Blueprint
+# Requirements and objectives for API contract definition
+
+phase_info:
+  id: 1
+  name: "System Contracts & API Design"
+  purpose: "Define API contracts as source of truth"
+  dependencies: ["phase_0"]
+  
+objectives:
+  primary:
+    - "Refine and validate OpenAPI specification"
+    - "Define all request/response schemas"
+    - "Establish API versioning strategy"
+    - "Document authentication requirements"
+  secondary:
+    - "Plan error handling patterns"
+    - "Design rate limiting specifications"
+    - "Define message attribution schemas"
+    
+requirements:
+  functional:
+    thread_management:
+      - "Create Discord threads via API"
+      - "Support thread title and initial message"
+      - "Return thread ID and Discord URL"
+    message_handling:
+      - "Post messages to existing threads"
+      - "Support message splitting for >2000 characters"
+      - "Include agent attribution metadata"
+    data_retrieval:
+      - "Fetch message history from threads"
+      - "Support pagination and filtering"
+      - "Include attribution data in responses"
+      
+  non_functional:
+    performance:
+      - "API response time <200ms p95"
+      - "Support concurrent requests from multiple AI agents"
+    reliability:
+      - "Graceful error handling and recovery"
+      - "Rate limiting to prevent Discord API violations"
+    security:
+      - "API key authentication for all endpoints"
+      - "Input validation and sanitization"
+      
+deliverables:
+  - "Refined OpenAPI specification (consilium-openapi-v1.2.yaml)"
+  - "API contract validation documentation"
+  - "Request/response schema definitions"
+  - "Authentication and authorization specifications"
+  
+validation_criteria:
+  - "OpenAPI schema validates successfully"
+  - "All endpoints have complete request/response definitions"
+  - "Authentication requirements clearly specified"
+  - "Error response schemas defined for all endpoints"
+  
+ai_parsing_usage:
+  implementation_requirements: "requirements.functional"
+  performance_targets: "requirements.non_functional.performance"
+  completion_validation: "validation_criteria"

@@ -1,0 +1,1292 @@
+project:
+  name: consilium-relay-enhanced
+  description: Multi-AI collaboration relay service with comprehensive technical scaffolding
+  runtime: python-3.11
+  framework: fastapi
+  mvp_definition: Chairman, Claude, and ChatGPT all posting and reading messages in same Discord thread with full observability and error recovery
+
+architectural_principles:
+  - source_of_truth: OpenAPI schema drives all implementation decisions
+  - fail_fast: Invalid configurations cause immediate startup failure with clear diagnostics
+  - observable: All operations are logged, traced, and measurable
+  - resilient: Graceful degradation and automatic recovery from transient failures
+  - testable: Every component has unit tests, integration boundaries are mocked
+  - scalable: Architecture supports multiple guilds/tenants without code changes
+
+phases:
+  - phase: 0
+    name: Foundation Documentation & Copilot Orientation
+    purpose: Establish comprehensive project context, coding standards, architectural principles, and implementation patterns before any code generation
+    type: documentation
+    copilot_can_automate: false
+    estimated_duration: "2-4 hours human effort"
+    
+    deliverables:
+      - path: docs/00_COPILOT_README.md
+        content:
+          - Project overview (Consilium purpose, multi-AI collaboration vision)
+          - Documentation system organization and navigation guide
+          - Coding standards (PEP 8, type hints mandatory, async/await patterns)
+          - Code hygiene rules (no secrets, 80-char lines, comprehensive docstrings)
+          - Testing philosophy (pytest, >85% coverage, mock external dependencies)
+          - File organization rules (src/ structure, import patterns, module boundaries)
+          - Error handling patterns (structured exceptions, context preservation)
+          - Logging standards (structured JSON, correlation IDs, security considerations)
+      
+      - path: docs/00_ARCHITECTURAL_VISION.md
+        content:
+          - System context diagram (AI agents, Discord, relay positioning)
+          - Quality attributes (performance targets, reliability goals, security posture)
+          - Technology stack rationale (FastAPI, discord.py, Pydantic choices)
+          - Deployment model (containerized, cloud-native, horizontal scaling)
+          - Integration patterns (async messaging, event-driven architecture)
+          - Monitoring and observability strategy
+    
+    dependencies: []
+    
+    validation:
+      - All documents exist in docs/ folder with proper markdown formatting
+      - Contains practical examples of compliant vs non-compliant code
+      - Includes decision rationale for major architectural choices
+      - References specific sections of OpenAPI schema
+      - Provides troubleshooting guidance for common setup issues
+    
+    copilot_instructions: |
+      This phase is human-authored foundation. Chairman establishes the 
+      architectural vision and coding philosophy. Copilot must read and 
+      internalize these documents before any code generation. All subsequent
+      phases should reference and comply with principles established here.
+
+  - phase: 1
+    name: Comprehensive System Architecture & Interface Contracts
+    purpose: Define complete system architecture, detailed API contracts, data flow patterns, and integration specifications
+    type: specification
+    copilot_can_automate: partial
+    estimated_duration: "4-6 hours"
+    
+    deliverables:
+      - path: docs/01_SYSTEM_ARCHITECTURE.yaml
+        content:
+          - Component architecture (relay core, Discord gateway, API layer, queue manager)
+          - Service boundaries and responsibilities
+          - Data flow diagrams (request ingestion → processing → Discord delivery)
+          - Integration points (Discord API, AI client protocols, monitoring systems)
+          - Deployment architecture (containers, networking, storage, secrets)
+          - Security model (authentication, authorization, audit logging)
+          - Scalability considerations (horizontal scaling, state management, caching)
+          
+      - path: docs/01_OPENAPI_VALIDATION.yaml
+        content:
+          - Complete OpenAPI v1.1 specification validation rules
+          - Request/response schema validation examples
+          - Error response format standardization
+          - Authentication mechanism detailed specification
+          - Rate limiting headers and behavior
+          - Idempotency key handling patterns
+          - API versioning and backwards compatibility strategy
+          
+      - path: docs/01_DATA_MODELS_DETAILED.md
+        content:
+          - Complete Pydantic model specifications with inheritance hierarchy
+          - Field-level validation rules and business logic constraints
+          - Serialization/deserialization patterns
+          - Database schema implications (if applicable)
+          - Example valid/invalid payloads with detailed explanations
+          - Model evolution and migration strategies
+          - Performance considerations for large message payloads
+
+      - path: docs/01_DISCORD_INTEGRATION_SPEC.md
+        content:
+          - Discord API interaction patterns and best practices
+          - Rate limiting strategy (token bucket vs sliding window analysis)
+          - Message splitting algorithm specification
+          - Thread lifecycle management
+          - Error recovery and retry logic
+          - Webhook vs gateway connection trade-offs
+          - Permission model and security considerations
+
+      - path: docs/01_ERROR_HANDLING_STRATEGY.md
+        content:
+          - Exception hierarchy and classification system
+          - Error context preservation and correlation
+          - Client-facing error message guidelines
+          - Retry policies and circuit breaker patterns
+          - Graceful degradation scenarios
+          - Error reporting and alerting strategy
+          - Recovery procedures for common failure modes
+    
+    dependencies:
+      - phase: 0
+    
+    validation:
+      - OpenAPI schema validates with openapi-spec-validator
+      - All data models include comprehensive type hints and validation
+      - Error handling patterns are consistently applied across all endpoints
+      - Integration specifications include concrete implementation guidance
+      - Security model addresses all identified threat vectors
+      - Performance targets are quantified and measurable
+    
+    copilot_instructions: |
+      Use the enhanced OpenAPI schema as the single source of truth for all
+      endpoint implementations. Generate Pydantic models that exactly match 
+      schema definitions with additional business logic validation. Implement
+      comprehensive error handling following the established patterns. All
+      code must be traced back to specifications in this phase.
+
+  - phase: 2
+    name: Repository Foundation, Dependencies & Development Environment
+    purpose: Scaffold complete directory structure, declare all dependencies, configure development tooling, and establish CI/CD foundations
+    type: infrastructure
+    copilot_can_automate: true
+    estimated_duration: "2-3 hours"
+    
+    deliverables:
+      - path: src/
+        subdirectories:
+          - api/ (FastAPI routes, dependencies, middleware)
+          - discord/ (Discord client, message handling, rate limiting)
+          - core/ (configuration, logging, utilities, exceptions)
+          - models/ (Pydantic models, validation, serialization)
+          - services/ (business logic, orchestration, external integrations)
+          - utils/ (helper functions, decorators, common utilities)
+          
+      - path: tests/
+        subdirectories:
+          - unit/ (isolated component tests)
+          - integration/ (service boundary tests)
+          - e2e/ (end-to-end workflow tests)
+          - fixtures/ (test data, mock objects, utilities)
+          - scenarios/ (realistic multi-agent conversation tests)
+          
+      - path: scripts/
+        subdirectories:
+          - deployment/ (Docker, cloud deployment scripts)
+          - validation/ (environment validation, health checks)
+          - development/ (local setup, database migrations)
+          
+      - path: requirements/
+        files:
+          - base.txt (core runtime dependencies)
+          - dev.txt (development and testing dependencies)
+          - prod.txt (production-specific dependencies)
+          
+      - path: requirements/base.txt
+        content:
+          - fastapi==0.104.1
+          - uvicorn[standard]==0.24.0
+          - pydantic[email]==2.4.2
+          - discord.py==2.3.2
+          - python-dotenv==1.0.0
+          - structlog==23.2.0
+          - httpx==0.25.0
+          - tenacity==8.2.3
+          - prometheus-client==0.19.0
+          
+      - path: requirements/dev.txt
+        content:
+          - pytest==7.4.3
+          - pytest-asyncio==0.21.1
+          - pytest-mock==3.12.0
+          - pytest-cov==4.1.0
+          - black==23.9.1
+          - isort==5.12.0
+          - mypy==1.6.1
+          - flake8==6.1.0
+          - pre-commit==3.5.0
+          - httpx-mock==0.10.1
+          
+      - path: .env.example
+        content:
+          - "# Discord Configuration"
+          - DISCORD_BOT_TOKEN=your_bot_token_here_50_plus_characters
+          - DISCORD_GUILD_ID=your_18_digit_guild_id_here
+          - DISCORD_CHANNEL_ID=your_18_digit_channel_id_here
+          - "# API Configuration"
+          - CONSILIUM_API_KEY=your_secure_api_key_here_32_chars_min
+          - API_HOST=0.0.0.0
+          - API_PORT=8000
+          - "# Logging Configuration"
+          - LOG_LEVEL=INFO
+          - LOG_FORMAT=json
+          - "# Rate Limiting"
+          - DISCORD_RATE_LIMIT_PER_SECOND=50
+          - API_RATE_LIMIT_PER_MINUTE=1000
+          - "# Message Processing"
+          - MAX_MESSAGE_LENGTH=2000
+          - MESSAGE_SPLIT_PRESERVE_CODE_BLOCKS=true
+          - QUEUE_MAX_SIZE=10000
+          
+      - path: .gitignore
+        content:
+          - "# Environment and secrets"
+          - .env
+          - .env.local
+          - "# Python"
+          - __pycache__/
+          - "*.pyc"
+          - "*.pyo"
+          - "*.pyd"
+          - .Python
+          - build/
+          - develop-eggs/
+          - dist/
+          - downloads/
+          - eggs/
+          - .eggs/
+          - lib/
+          - lib64/
+          - parts/
+          - sdist/
+          - var/
+          - wheels/
+          - "# Testing"
+          - .pytest_cache/
+          - .coverage
+          - htmlcov/
+          - .tox/
+          - .cache
+          - nosetests.xml
+          - coverage.xml
+          - "*.cover"
+          - .hypothesis/
+          - "# IDEs"
+          - .vscode/
+          - .idea/
+          - "*.swp"
+          - "*.swo"
+          - "*~"
+          - "# OS"
+          - .DS_Store
+          - Thumbs.db
+          
+      - path: pyproject.toml
+        content:
+          - "[build-system]"
+          - 'requires = ["setuptools>=61.0"]'
+          - 'build-backend = "setuptools.build_meta"'
+          - "[project]"
+          - 'name = "consilium-relay"'
+          - 'version = "1.1.0"'
+          - 'description = "Multi-AI collaboration relay service"'
+          - "[tool.black]"
+          - "line-length = 80"
+          - "target-version = ['py311']"
+          - "[tool.isort]"
+          - "profile = 'black'"
+          - "line_length = 80"
+          - "[tool.mypy]"
+          - "python_version = '3.11'"
+          - "strict = true"
+          - "warn_return_any = true"
+          - "warn_unused_configs = true"
+          - "[tool.pytest.ini_options]"
+          - "minversion = '6.0'"
+          - "addopts = '-ra -q --strict-markers --cov=src --cov-report=term-missing'"
+          - "testpaths = ['tests']"
+          - "asyncio_mode = 'auto'"
+          
+      - path: README.md
+        content:
+          - "# Consilium Relay"
+          - "Multi-AI collaboration service enabling structured decision-making"
+          - "## Quick Start"
+          - "## Architecture Overview"
+          - "## Development Setup"
+          - "## API Documentation"
+          - "## Contributing Guidelines"
+          - "## Troubleshooting"
+
+      - path: .pre-commit-config.yaml
+        content:
+          - Pre-commit hooks for code quality (black, isort, mypy, tests)
+          
+      - path: Makefile
+        content:
+          - Common development commands (install, test, lint, run)
+    
+    dependencies:
+      - phase: 1
+    
+    validation:
+      - pip install -r requirements/dev.txt succeeds without conflicts
+      - All directory structures exist with proper __init__.py files
+      - Pre-commit hooks execute successfully
+      - make install && make test succeeds (with placeholder tests)
+      - Docker build completes without errors
+      - All configuration examples are valid and documented
+    
+    copilot_instructions: |
+      Create the complete directory tree with proper Python package structure.
+      Use exact versions in requirements files to ensure reproducible builds.
+      Include comprehensive development tooling configuration. All __init__.py
+      files should include proper module docstrings. The .env.example must
+      document every required environment variable with validation hints.
+
+  - phase: 3
+    name: Discord Infrastructure Setup & Validation
+    purpose: Create Discord bot, configure permissions, establish server infrastructure, and validate connectivity
+    type: manual
+    copilot_can_automate: false
+    estimated_duration: "1-2 hours manual setup"
+    
+    deliverables:
+      - description: Discord application registered in Developer Portal
+      - description: Bot token generated with appropriate regeneration policy
+      - description: Message Content Intent and Server Members Intent enabled
+      - description: OAuth2 scopes configured (bot, applications.commands)
+      - description: Bot permissions calculated and documented
+      - description: Discord server created with proper channel structure
+      - description: Bot invited to server with validated permissions
+      - description: Test message sending capability verified
+      
+      - path: .env
+        content:
+          - DISCORD_BOT_TOKEN populated with valid 50+ character token
+          - DISCORD_GUILD_ID populated with 18-digit server ID
+          - DISCORD_CHANNEL_ID populated with 18-digit channel ID
+          - All other required environment variables configured
+          
+      - path: docs/03_DISCORD_SETUP_GUIDE.md
+        content:
+          - Step-by-step Discord Developer Portal configuration
+          - Screenshots of critical configuration screens
+          - Permission calculation and rationale
+          - Bot invitation URL generation and usage
+          - Server setup recommendations and channel structure
+          - Security considerations and token management
+          - Troubleshooting common setup issues
+          - Validation checklist for successful configuration
+          
+      - path: scripts/validation/discord_connectivity.py
+        content:
+          - Automated validation script for Discord setup
+          - Bot token validation and scope verification
+          - Guild/channel accessibility testing
+          - Permission verification for required operations
+          - Message sending and reading capability tests
+          - Rate limit detection and handling validation
+          - Connection stability and reconnection testing
+          
+      - path: docs/03_DISCORD_TROUBLESHOOTING.md
+        content:
+          - Common Discord API error codes and resolutions
+          - Permission debugging workflow
+          - Token regeneration and rotation procedures
+          - Network connectivity and firewall considerations
+          - Discord gateway connection troubleshooting
+          - Rate limit monitoring and adjustment strategies
+    
+    dependencies:
+      - phase: 2
+    
+    validation:
+      - Bot appears in Discord server member list with online status
+      - Bot token validates successfully via Discord API
+      - Guild and Channel IDs are exactly 18 digits and accessible
+      - Bot has all required permissions (Send Messages, Read Message History, Create Threads, etc.)
+      - scripts/validation/discord_connectivity.py passes all tests
+      - Test message posted successfully through bot
+      - Rate limiting behaves as expected under load testing
+    
+    copilot_instructions: |
+      This phase is entirely manual and must be completed by Chairman before
+      proceeding. Copilot can reference the configured .env values and use
+      the validation scripts to verify setup, but cannot create the Discord
+      application or configure the server. All subsequent Discord integration
+      must use the tokens and IDs established in this phase.
+
+  - phase: 4
+    name: Core Framework & Application Bootstrap
+    purpose: Build production-ready FastAPI foundation with comprehensive logging, configuration management, and health monitoring
+    type: implementation
+    copilot_can_automate: true
+    estimated_duration: "3-4 hours"
+    
+    deliverables:
+      - path: src/main.py
+        requirements:
+          - FastAPI application initialization with comprehensive metadata
+          - Startup event handlers for Discord connection and health checks
+          - Shutdown event handlers for graceful resource cleanup
+          - Exception handlers for all anticipated error types
+          - CORS middleware with secure configuration
+          - Request/response logging middleware with correlation IDs
+          - Health check endpoint at GET /health with detailed status
+          - OpenAPI documentation configuration and customization
+          - Graceful shutdown handling for SIGTERM/SIGINT
+          
+      - path: src/core/config.py
+        requirements:
+          - Pydantic BaseSettings class with comprehensive validation
+          - Environment variable loading with type conversion and validation
+          - Configuration sections (Discord, API, Logging, Rate Limiting, etc.)
+          - Required field validation with descriptive error messages
+          - Development vs production configuration profiles
+          - Configuration change detection and hot-reloading support
+          - Sensitive field masking for logging and debugging
+          - Configuration export for debugging and documentation
+          
+      - path: src/core/logging.py
+        requirements:
+          - Structured JSON logging with contextual information
+          - Request correlation ID generation and propagation
+          - Log level configuration via environment variables
+          - Security-aware logging (credential scrubbing, PII protection)
+          - Performance logging for slow operations
+          - Error context preservation and stack trace formatting
+          - Log rotation and retention policy configuration
+          - Integration with monitoring and alerting systems
+          
+      - path: src/core/exceptions.py
+        requirements:
+          - Custom exception hierarchy for domain-specific errors
+          - Discord API exception mapping and handling
+          - HTTP status code mapping for API errors
+          - Error context preservation and enrichment
+          - User-friendly error message generation
+          - Exception logging and monitoring integration
+          - Recovery suggestion generation for common errors
+          
+      - path: src/core/middleware.py
+        requirements:
+          - Request timing and performance monitoring
+          - Rate limiting middleware with configurable strategies
+          - Authentication and authorization middleware
+          - Request/response transformation and validation
+          - Error handling and response formatting
+          - CORS configuration with security considerations
+          - Request tracing and debugging support
+          
+      - path: src/api/dependencies.py
+        requirements:
+          - API key validation with configurable key sources
+          - Rate limiting dependency with per-client tracking
+          - Request validation and sanitization
+          - Database connection management (if applicable)
+          - Discord client dependency injection
+          - Configuration access dependency
+          - Logging context dependency injection
+    
+    dependencies:
+      - phase: 2
+      - phase: 3
+    
+    validation:
+      - uvicorn src.main:app starts without errors and warnings
+      - GET /health returns 200 with comprehensive status information
+      - GET /docs serves OpenAPI documentation correctly
+      - All configuration validation works with missing/invalid values
+      - Logging produces properly formatted JSON with correlation IDs
+      - Graceful shutdown completes within 30 seconds
+      - Exception handling produces appropriate HTTP responses
+      - Rate limiting prevents abuse while allowing legitimate traffic
+    
+    copilot_instructions: |
+      Generate a production-ready FastAPI application following enterprise
+      patterns. Use dependency injection extensively for testability. Implement
+      comprehensive error handling with proper HTTP status codes. All logging
+      must be structured and include correlation IDs. Configuration validation
+      should fail fast with clear error messages. The application must handle
+      graceful shutdown and be ready for containerization.
+
+  - phase: 5
+    name: API Endpoints with Comprehensive Mock Implementation
+    purpose: Implement complete API contract with realistic mock responses, comprehensive validation, and error handling
+    type: implementation
+    copilot_can_automate: true
+    estimated_duration: "4-5 hours"
+    
+    deliverables:
+      - path: src/models/api.py
+        requirements:
+          - Author model with validation and serialization methods
+          - PostMessageRequest with content validation and sanitization
+          - PostMessageResponse with status and metadata
+          - FetchMessagesResponse with pagination and filtering
+          - StartThreadRequest with title validation and sanitization
+          - StartThreadResponse with complete thread metadata
+          - All models match OpenAPI schema exactly with additional business validation
+          - Model inheritance hierarchy for code reuse
+          - Custom validators for Discord-specific constraints
+          - Serialization optimization for large message payloads
+          
+      - path: src/models/discord.py
+        requirements:
+          - Discord-specific data models (Message, Thread, User, etc.)
+          - Conversion methods between API models and Discord models
+          - Discord API response parsing and validation
+          - Error mapping from Discord API to internal exceptions
+          - Rate limit information extraction and tracking
+          
+      - path: src/api/routes/system.py
+        requirements:
+          - GET /v1/system/health with comprehensive health checks
+            - Database connectivity (if applicable)
+            - Discord gateway connection status
+            - External service dependencies
+            - Memory and CPU utilization
+            - Queue depth and processing status
+          - GET /v1/system/info with detailed service information
+            - Version information and build metadata
+            - Configuration summary (non-sensitive)
+            - Performance metrics and statistics
+            - Feature flags and operational status
+            
+      - path: src/api/routes/strategy.py
+        requirements:
+          - POST /v1/strategy/start-thread
+            - Title validation and sanitization
+            - Seed message processing and formatting
+            - Mock thread creation with realistic Discord IDs
+            - Response timing simulation for realistic behavior
+            - Error simulation for testing client resilience
+          - POST /v1/strategy/post
+            - Thread ID validation and existence checking
+            - Author information validation and normalization
+            - Content validation, length checking, and sanitization
+            - Mock message splitting simulation
+            - Idempotency key handling and duplicate detection
+            - Queue simulation for rate limiting scenarios
+            - Attribution formatting and metadata attachment
+          - GET /v1/strategy/fetch
+            - Thread ID validation and authorization
+            - Timestamp parsing and validation
+            - Pagination parameter validation and optimization
+            - Mock message history generation with realistic data
+            - Author attribution and metadata consistency
+            - Response filtering and sorting
+            
+      - path: src/api/routes/__init__.py
+        requirements:
+          - Router registration and organization
+          - Common route dependencies and middleware
+          - Route-specific error handling
+          - OpenAPI metadata and documentation
+          
+      - path: src/services/mock_discord.py
+        requirements:
+          - Realistic mock data generation for Discord entities
+          - Thread lifecycle simulation
+          - Message history generation with temporal consistency
+          - Rate limiting simulation and testing
+          - Error condition simulation for resilience testing
+          - Performance characteristics matching real Discord API
+          
+      - path: src/utils/validation.py
+        requirements:
+          - Discord ID format validation (18-digit snowflakes)
+          - Message content validation and sanitization
+          - Rate limiting calculation and enforcement
+          - Input sanitization and security validation
+          - Business rule validation and enforcement
+    
+    dependencies:
+      - phase: 4
+      - phase: 1
+    
+    validation:
+      - All endpoints return correct HTTP status codes for valid inputs
+      - Invalid requests return 400 with detailed, actionable error messages
+      - Missing API key returns 401 with proper authentication challenge
+      - Non-existent resources return 404 with helpful error context
+      - Rate limiting returns 429 with proper Retry-After headers
+      - Mock responses conform exactly to OpenAPI schema definitions
+      - Response headers include proper content-type and caching directives
+      - Idempotency key handling prevents duplicate operations
+      - Pagination works correctly with various parameter combinations
+      - Error responses include correlation IDs for debugging
+    
+    copilot_instructions: |
+      Implement all routes using Pydantic models that exactly match the OpenAPI
+      specification. Generate realistic mock data that would be indistinguishable
+      from real Discord API responses. Mock data should include proper Discord
+      snowflake IDs, realistic timestamps, and consistent attribution. Design
+      the route handlers to make the transition to real Discord integration
+      seamless in Phase 6. Include comprehensive input validation and business
+      rule enforcement. All error responses must be helpful and actionable.
+
+  - phase: 6
+    name: Discord Client Integration & Real-time Message Processing
+    purpose: Replace mock implementations with production Discord integration, including advanced message handling and error recovery
+    type: implementation
+    copilot_can_automate: true
+    estimated_duration: "5-6 hours"
+    
+    deliverables:
+      - path: src/discord/client.py
+        requirements:
+          - discord.py bot client with comprehensive event handling
+          - Connection management with automatic reconnection
+          - Gateway event processing and state synchronization
+          - Thread creation and management with proper permissions
+          - Message sending with attribution and formatting
+          - Message fetching with pagination and filtering
+          - Rate limit handling with backoff and retry logic
+          - Error handling and recovery for all Discord API operations
+          - Connection health monitoring and reporting
+          - Graceful shutdown and cleanup procedures
+          
+      - path: src/discord/message_handler.py
+        requirements:
+          - Intelligent message splitting algorithm
+            - Preserve markdown formatting (code blocks, lists, tables)
+            - Split on sentence boundaries when possible
+            - Handle nested markdown structures correctly
+            - Maintain readability across message chunks
+            - Add continuation indicators for multi-part messages
+          - Message queue management for rate limiting
+            - Priority-based queuing for different message types
+            - Batching optimization for efficiency
+            - Queue persistence for reliability
+            - Backpressure handling and flow control
+            - Dead letter queue for failed messages
+          - Attribution and metadata handling
+            - Rich embed generation for author information
+            - Run ID tracking and correlation
+            - Timestamp preservation and normalization
+            - Reply thread management and context preservation
+          - Content processing and validation
+            - Sanitization and security filtering
+            - Content type detection and handling
+            - Attachment processing (if applicable)
+            - URL preview and link handling
+            
+      - path: src/discord/rate_limiter.py
+        requirements:
+          - Token bucket implementation for Discord rate limits
+          - Per-route and global rate limiting
+          - Dynamic rate limit adjustment based on Discord headers
+          - Rate limit sharing across multiple bot instances
+          - Predictive rate limiting to prevent 429 responses
+          - Metrics collection and monitoring
+          - Configuration-driven rate limit parameters
+          
+      - path: src/discord/error_recovery.py
+        requirements:
+          - Exponential backoff with jitter for retries
+          - Circuit breaker pattern for failing operations
+          - Dead letter queue for permanently failed operations
+          - Error classification and recovery strategies
+          - Connection recovery and state resynchronization
+          - Monitoring and alerting for persistent failures
+          
+      - path: src/api/routes/strategy.py (modified)
+        requirements:
+          - Replace mock implementations with Discord client calls
+          - start-thread -> discord_client.create_thread with error handling
+          - post -> message_handler.enqueue_message with queue management
+          - fetch -> discord_client.fetch_messages with pagination
+          - Maintain identical request/response signatures
+          - Add comprehensive error handling and recovery
+          - Include performance monitoring and logging
+          - Implement graceful degradation for Discord outages
+          
+      - path: src/services/discord_service.py
+        requirements:
+          - High-level Discord operations abstraction
+          - Business logic implementation for multi-AI workflows
+          - Cross-cutting concerns (logging, monitoring, caching)
+          - Integration with other service components
+          - Configuration and feature flag management
+    
+    dependencies:
+      - phase: 5
+      - phase: 3
+    
+    validation:
+      - POST to /v1/strategy/post creates actual messages in Discord
+      - GET /v1/strategy/fetch returns real Discord message history
+      - Messages exceeding 2000 characters split correctly while preserving formatting
+      - Attribution embeds appear correctly in Discord with all metadata
+      - Rate limiting prevents 429 errors from Discord under load
+      - Connection failures are handled gracefully with automatic recovery
+      - Message queue processes messages in correct priority order
+      - Dead letter queue captures and reports permanently failed messages
+      - Performance meets or exceeds targets under realistic load
+      - Error recovery handles all identified failure scenarios
+    
+    copilot_instructions: |
+      Use discord.py library with comprehensive async/await patterns. Implement
+      sophisticated rate limiting that proactively prevents Discord API limits.
+      The message splitting algorithm must preserve all markdown formatting
+      while maintaining readability. Design for high availability with automatic
+      recovery from transient failures. Include comprehensive monitoring and
+      alerting. All Discord operations must be idempotent and resilient to
+      network issues. Performance should be optimized for concurrent operations.
+
+  - phase: 7
+    name: Comprehensive Testing Suite & Quality Assurance
+    purpose: Validate system correctness, performance, and reliability through extensive automated testing
+    type: testing
+    copilot_can_automate: true
+    estimated_duration: "6-8 hours"
+    
+    deliverables:
+      - path: tests/conftest.py
+        requirements:
+          - pytest fixtures for FastAPI test client with full middleware stack
+          - Mock Discord client with realistic behavior simulation
+          - Test configuration with isolated environment variables
+          - Database fixtures and transaction management (if applicable)
+          - Logging configuration for test environments
+          - Performance monitoring and profiling fixtures
+          - Async test utilities and context managers
+          
+      - path: tests/unit/test_message_handler.py
+        requirements:
+          - test_split_under_limit: messages <2000 chars unchanged
+          - test_split_at_exact_limit: 2000 char messages handled correctly
+          - test_split_over_limit: various sizes split appropriately
+          - test_split_preserves_code_fence: ``` blocks never broken mid-block
+          - test_split_preserves_lists: markdown lists maintain structure
+          - test_split_preserves_tables: table formatting preserved
+          - test_split_on_sentence_boundaries: natural language splitting
+          - test_split_multiple_chunks: very long messages handled correctly
+          - test_split_edge_cases: empty messages, whitespace-only, special chars
+          - test_attribution_formatting: embed generation and metadata
+          - test_queue_management: priority, ordering, persistence
+          - test_error_handling: malformed input, processing failures
+          
+      - path: tests/unit/test_rate_limiter.py
+        requirements:
+          - test_token_bucket_implementation: bucket fill and consumption
+          - test_rate_limit_enforcement: requests blocked when limit exceeded
+          - test_dynamic_adjustment: rate limits adjust based on Discord headers
+          - test_per_route_limiting: different limits for different endpoints
+          - test_global_limiting: overall request rate management
+          - test_backoff_strategies: exponential backoff with jitter
+          - test_concurrent_access: thread-safe operation under load
+          - test_persistence: rate limit state survives restarts
+          
+      - path: tests/unit/test_models.py
+        requirements:
+          - test_pydantic_validation: all field validation rules
+          - test_serialization: JSON serialization round-trip correctness
+          - test_business_rules: domain-specific validation logic
+          - test_error_messages: validation errors are helpful and specific
+          - test_model_inheritance: base class behavior and overrides
+          - test_custom_validators: Discord ID format, content length, etc.
+          - test_edge_cases: boundary values and extreme inputs
+          
+      - path: tests/integration/test_api_routes.py
+        requirements:
+          - test_health_endpoint: comprehensive health checking
+          - test_info_endpoint: service metadata and version information
+          - test_start_thread_valid: successful thread creation
+          - test_start_thread_invalid: various error conditions
+          - test_post_message_valid: successful message posting
+          - test_post_message_invalid: validation and business rule failures
+          - test_fetch_messages_valid: message retrieval and pagination
+          - test_fetch_messages_invalid: error handling and edge cases
+          - test_authentication: API key validation and error responses
+          - test_rate_limiting: client rate limiting behavior
+          - test_idempotency: duplicate request handling
+          - test_concurrent_requests: system behavior under concurrent load
+          
+      - path: tests/integration/test_discord_integration.py
+        requirements:
+          - test_discord_connection: connection establishment and health
+          - test_thread_creation: real Discord thread creation (with mocks)
+          - test_message_posting: end-to-end message posting workflow
+          - test_message_fetching: message retrieval and parsing
+          - test_rate_limit_handling: Discord rate limit compliance
+          - test_error_recovery: connection failures and reconnection
+          - test_message_splitting: real-world message splitting scenarios
+          - test_attribution: embed generation and display
+          
+      - path: tests/e2e/test_multi_agent_workflow.py
+        requirements:
+          - test_full_conversation_flow: create thread -> multiple agents post -> fetch
+          - test_message_ordering: chronological message ordering preservation
+          - test_attribution_consistency: author information accuracy
+          - test_concurrent_agents: multiple agents posting simultaneously
+          - test_long_conversation_pagination: large conversation handling
+          - test_error_scenarios: partial failures and recovery
+          - test_performance_under_load: realistic load testing
+          
+      - path: tests/scenarios/test_realistic_conversations.py
+        requirements:
+          - test_technical_decision_making: realistic multi-AI technical discussion
+          - test_complex_message_formatting: code blocks, tables, lists
+          - test_message_threading: reply chains and context preservation
+          - test_long_form_content: article-length messages and splitting
+          - test_rapid_conversation: high-frequency message exchanges
+          - test_mixed_content_types: text, code, data, links
+          
+      - path: tests/performance/test_load_scenarios.py
+        requirements:
+          - test_concurrent_thread_creation: multiple threads created simultaneously
+          - test_high_message_volume: sustained high message posting rates
+          - test_large_message_processing: very long messages and splitting
+          - test_memory_usage: memory consumption under sustained load
+          - test_response_times: latency under various load conditions
+          - test_queue_performance: message queue behavior under stress
+          
+      - path: pytest.ini
+        requirements:
+          - pytest configuration with comprehensive options
+          - asyncio mode configuration for async tests
+          - coverage configuration with detailed reporting
+          - test discovery and execution parameters
+          - Parallel test execution configuration
+          - Performance testing integration
+          - Custom markers for test categorization
+    
+    dependencies:
+      - phase: 5
+      - phase: 6
+    
+    validation:
+      - pytest tests/ passes all tests with no failures or warnings
+      - Code coverage >85% on all src/ modules with detailed reporting
+      - Performance tests meet or exceed established benchmarks
+      - Integration tests validate all external service interactions
+      - No tests marked as xfail or skip without documented justification
+      - Test execution completes in <5 minutes for unit tests, <15 minutes total
+      - Load testing demonstrates system stability under realistic conditions
+      - All edge cases and error conditions have corresponding test coverage
+    
+    copilot_instructions: |
+      Write comprehensive tests using pytest-asyncio for all async operations.
+      Mock external dependencies (Discord API, databases) using pytest-mock
+      with realistic behavior simulation. Test all edge cases including network
+      failures, malformed input, and rate limiting scenarios. Include performance
+      benchmarks and load testing. Use descriptive test names that explain
+      the specific behavior being validated. Organize tests by scope (unit,
+      integration, e2e) and ensure proper test isolation.
+
+  - phase: 8
+    name: Production Containerization & Deployment Preparation
+    purpose: Package the relay as a production-ready, secure, and observable container with comprehensive deployment automation
+    type: infrastructure
+    copilot_can_automate: true
+    estimated_duration: "4-5 hours"
+    
+    deliverables:
+      - path: Dockerfile
+        requirements:
+          - Multi-stage build for optimized final image size
+          - FROM python:3.11-slim-bookworm for security and size
+          - Non-root user creation and security hardening
+          - Dependency installation with version pinning
+          - Application code copying with proper permissions
+          - Health check configuration for container orchestration
+          - Signal handling for graceful shutdown
+          - Security scanning and vulnerability mitigation
+          - Build argument support for customization
+          - Layer optimization for build caching
+          
+      - path: docker-compose.yml
+        requirements:
+          - Multi-service configuration (relay, monitoring, logging)
+          - Environment variable management and secrets handling
+          - Network configuration and service discovery
+          - Volume management for persistent data
+          - Health checks and restart policies
+          - Resource limits and constraints
+          - Development and production profiles
+          - Service dependencies and startup ordering
+          
+      - path: docker-compose.prod.yml
+        requirements:
+          - Production-specific overrides and optimizations
+          - External network configuration
+          - Monitoring and logging service integration
+          - Security hardening and access controls
+          - Performance tuning and resource allocation
+          - Backup and disaster recovery considerations
+          
+      - path: .dockerignore
+        requirements:
+          - Comprehensive exclusion list for build optimization
+          - Security-sensitive file exclusion
+          - Development-only file filtering
+          - Test data and temporary file exclusion
+          - Documentation and non-runtime file filtering
+          
+      - path: scripts/deployment/build.sh
+        requirements:
+          - Automated Docker build with tagging strategy
+          - Multi-architecture build support (amd64, arm64)
+          - Build argument injection and customization
+          - Image scanning and security validation
+          - Build artifact management and cleanup
+          - CI/CD integration hooks
+          
+      - path: scripts/deployment/deploy.sh
+        requirements:
+          - Environment-specific deployment automation
+          - Health check validation and rollback procedures
+          - Configuration validation and testing
+          - Service discovery and load balancer integration
+          - Monitoring and alerting setup
+          - Deployment verification and smoke testing
+          
+      - path: k8s/
+        subdirectories:
+          - base/ (base Kubernetes manifests)
+          - overlays/ (environment-specific customizations)
+          
+      - path: k8s/base/deployment.yaml
+        requirements:
+          - Kubernetes Deployment with rolling update strategy
+          - Resource requests and limits
+          - Health checks and readiness probes
+          - Security context and pod security standards
+          - ConfigMap and Secret integration
+          - Anti-affinity rules for high availability
+          
+      - path: k8s/base/service.yaml
+        requirements:
+          - Service definition with appropriate type and ports
+          - Load balancing and session affinity configuration
+          - Health check endpoint exposure
+          - Service discovery integration
+          
+      - path: k8s/base/configmap.yaml
+        requirements:
+          - Non-sensitive configuration management
+          - Environment-specific parameter injection
+          - Feature flag and operational configuration
+          
+      - path: k8s/base/ingress.yaml
+        requirements:
+          - Ingress configuration with TLS termination
+          - Path-based routing and load balancing
+          - Rate limiting and security policies
+          - SSL certificate management
+          
+      - path: docs/08_DEPLOYMENT_GUIDE.md
+        requirements:
+          - Comprehensive deployment documentation
+          - Environment-specific deployment procedures
+          - Configuration management and secrets handling
+          - Monitoring and observability setup
+          - Troubleshooting and debugging procedures
+          - Scaling and performance optimization guidance
+          - Security considerations and best practices
+          - Disaster recovery and backup procedures
+    
+    dependencies:
+      - phase: 4
+      - phase: 5
+      - phase: 6
+      - phase: 7
+    
+    validation:
+      - docker build completes successfully with optimized layer caching
+      - Container starts and passes health checks within 30 seconds
+      - docker-compose up deploys full stack successfully
+      - Container security scan passes with no critical vulnerabilities
+      - Resource usage remains within defined limits under load
+      - Graceful shutdown completes within configured timeout
+      - Multi-architecture builds work on both x86_64 and ARM64
+      - Kubernetes manifests deploy successfully in test cluster
+      - All deployment scripts execute without errors
+      - Production deployment can be completed end-to-end
+    
+    copilot_instructions: |
+      Create production-ready containers following security best practices.
+      Use multi-stage builds to minimize final image size while including
+      all necessary dependencies. Implement proper signal handling for
+      graceful shutdown in containerized environments. Include comprehensive
+      health checks that validate both application readiness and external
+      dependencies. Configure resource limits based on performance testing
+      results. Provide both Docker Compose and Kubernetes deployment options
+      with environment-specific customization capabilities.
+
+  - phase: 9
+    name: Production Deployment & MVP Validation
+    purpose: Deploy to production environment and validate complete multi-AI collaboration workflow with comprehensive monitoring
+    type: deployment
+    copilot_can_automate: partial
+    estimated_duration: "4-6 hours (including manual validation)"
+    
+    deliverables:
+      - description: Production deployment to cloud platform (Railway/Fly.io/Render/AWS)
+      - description: Public HTTPS endpoint with proper SSL certificate
+      - description: Monitoring and observability stack deployment
+      - description: Alerting and notification system configuration
+      
+      - path: ~/.config/claude/mcp_servers.json (Chairman's machine)
+        content:
+          - MCP server configuration pointing to production relay
+          - Secure API key management and rotation
+          - Connection timeout and retry configuration
+          - Logging and debugging configuration
+          
+      - description: Custom GPT configuration in ChatGPT
+        content:
+          - OpenAPI schema import from Phase 1 specification
+          - Authentication configuration with secure API key
+          - Custom instructions for Consilium interaction patterns
+          - Error handling and retry logic configuration
+          
+      - description: Production validation workflow
+        content:
+          - Automated health check validation
+          - End-to-end workflow testing with all three AI agents
+          - Performance validation under realistic load
+          - Error handling and recovery validation
+          - Security testing and vulnerability assessment
+          
+      - path: docs/09_PRODUCTION_VALIDATION.md
+        content:
+          - Complete MVP validation checklist
+          - Multi-AI conversation test scenarios
+          - Performance benchmark results
+          - Security assessment findings
+          - Operational readiness validation
+          - Incident response procedures
+          - Maintenance and update procedures
+          
+      - path: docs/09_MVP_SESSION_LOG.md
+        content:
+          - Detailed log of first successful multi-AI session
+          - Participant information and connection methods
+          - Message exchange statistics and performance metrics
+          - Issues encountered and resolution procedures
+          - Lessons learned and improvement recommendations
+          - Success criteria validation and sign-off
+          
+      - path: monitoring/
+        subdirectories:
+          - prometheus/ (metrics collection configuration)
+          - grafana/ (dashboard and visualization)
+          - alerts/ (alerting rules and notification configuration)
+          
+      - path: monitoring/grafana/dashboards/consilium-overview.json
+        requirements:
+          - System health and performance metrics
+          - Discord API interaction statistics
+          - Message processing throughput and latency
+          - Error rates and failure analysis
+          - Resource utilization and scaling metrics
+          
+      - path: scripts/validation/production-health-check.py
+        requirements:
+          - Comprehensive production system validation
+          - Multi-endpoint health verification
+          - Performance baseline validation
+          - Security configuration verification
+          - External dependency validation
+          - Automated smoke testing suite
+          
+      - description: Load testing and performance validation
+        requirements:
+          - Realistic load testing with multiple concurrent agents
+          - Performance regression testing
+          - Scalability validation and bottleneck identification
+          - Resource utilization optimization
+          - SLA compliance validation
+    
+    dependencies:
+      - phase: 8
+    
+    validation:
+      - Production deployment accessible via HTTPS with valid SSL certificate
+      - Health checks pass consistently with <100ms response time
+      - Claude successfully posts messages via MCP (verified in Discord)
+      - ChatGPT successfully posts messages via Custom GPT (verified in Discord)
+      - Chairman can participate in conversations via Discord UI
+      - All three participants can read each other's messages in real-time
+      - Message attribution is accurate and consistently displayed
+      - Rate limiting prevents service degradation under load
+      - Error handling provides graceful degradation during outages
+      - Monitoring dashboards display accurate real-time metrics
+      - Alerting system triggers appropriately for various failure scenarios
+      - Performance meets or exceeds established SLA targets
+      - Security scanning shows no critical vulnerabilities
+      - Backup and disaster recovery procedures validate successfully
+    
+    copilot_instructions: |
+      Deployment involves both automated and manual components. Copilot can
+      generate deployment configurations, monitoring setup, and validation
+      scripts, but Chairman must execute the actual deployment and perform
+      manual validation steps. Focus on creating comprehensive validation
+      procedures and monitoring configurations that will ensure long-term
+      operational success. Include detailed troubleshooting guides and
+      escalation procedures for production issues.
+
+technical_scaffolding_documents:
+  architectural_decision_records:
+    - path: docs/decisions/ADR-001-fastapi-framework-choice.md
+      rationale: "FastAPI selection over Flask/Django for async-first design, automatic OpenAPI generation, and modern Python typing support"
+      
+    - path: docs/decisions/ADR-002-discord-py-vs-api-direct.md
+      rationale: "discord.py library choice over direct Discord API for gateway connection management, event handling, and rate limiting"
+      
+    - path: docs/decisions/ADR-003-message-splitting-strategy.md
+      rationale: "Intelligent content-aware splitting over naive character counting for markdown preservation and readability"
+      
+    - path: docs/decisions/ADR-004-rate-limiting-implementation.md
+      rationale: "Token bucket algorithm choice over sliding window for predictable behavior and burstiness handling"
+      
+    - path: docs/decisions/ADR-005-error-handling-philosophy.md
+      rationale: "Structured exception hierarchy over generic error codes for precise error handling and recovery"
+      
+    - path: docs/decisions/ADR-006-async-architecture-patterns.md
+      rationale: "Full async/await adoption over mixed sync/async for consistent performance and resource utilization"
+
+  implementation_checklists:
+    - path: docs/checklists/PHASE_4_IMPLEMENTATION.md
+      content:
+        - "[ ] FastAPI app initializes without warnings"
+        - "[ ] Configuration validation fails fast with clear messages"
+        - "[ ] Health endpoint includes all dependency checks"
+        - "[ ] Logging produces structured JSON with correlation IDs"
+        - "[ ] Graceful shutdown completes within timeout"
+        - "[ ] Exception handling covers all anticipated error types"
+        - "[ ] Middleware chain processes requests correctly"
+        - "[ ] OpenAPI documentation generates correctly"
+        
+    - path: docs/checklists/PHASE_5_API_ENDPOINTS.md
+      content:
+        - "[ ] All endpoints match OpenAPI specification exactly"
+        - "[ ] Input validation provides actionable error messages"
+        - "[ ] Mock responses include realistic Discord data"
+        - "[ ] Rate limiting headers are included in responses"
+        - "[ ] Idempotency keys prevent duplicate operations"
+        - "[ ] Pagination parameters work correctly"
+        - "[ ] Error responses include correlation IDs"
+        - "[ ] Authentication handles all specified scenarios"
+        
+    - path: docs/checklists/PHASE_6_DISCORD_INTEGRATION.md
+      content:
+        - "[ ] Discord client connects and maintains connection"
+        - "[ ] Message splitting preserves all markdown formatting"
+        - "[ ] Rate limiting prevents Discord API 429 responses"
+        - "[ ] Attribution embeds display correctly in Discord"
+        - "[ ] Error recovery handles all connection failure scenarios"
+        - "[ ] Message queue processes items in correct order"
+        - "[ ] Thread creation works with proper permissions"
+        - "[ ] Message fetching handles pagination correctly"
+
+  troubleshooting_guides:
+    - path: docs/troubleshooting/discord-connection-issues.md
+      content:
+        - Common Discord gateway connection problems
+        - Bot token validation and regeneration procedures
+        - Permission debugging workflow
+        - Network connectivity and firewall considerations
+        - Rate limit detection and mitigation strategies
+        
+    - path: docs/troubleshooting/api-error-debugging.md
+      content:
+        - HTTP status code interpretation and resolution
+        - Request validation failure analysis
+        - Authentication and authorization debugging
+        - Performance bottleneck identification
+        - Correlation ID tracing procedures
+        
+    - path: docs/troubleshooting/message-processing-issues.md
+      content:
+        - Message splitting algorithm debugging
+        - Queue processing and backlog management
+        - Attribution display problems
+        - Content sanitization and validation issues
+        - Rate limiting and throttling analysis
+
+  performance_specifications:
+    - path: docs/performance/SLA_REQUIREMENTS.md
+      content:
+        - Response time targets (p50, p95, p99)
+        - Throughput requirements for message processing
+        - Availability targets and uptime expectations
+        - Error rate thresholds and acceptable limits
+        - Resource utilization guidelines
+        - Scalability requirements and growth projections
+        
+    - path: docs/performance/LOAD_TESTING_STRATEGY.md
+      content:
+        - Load testing scenarios and user patterns
+        - Performance baseline establishment procedures
+        - Bottleneck identification and analysis methods
+        - Scalability testing and capacity planning
+        - Performance regression testing procedures
+        - Monitoring and alerting for performance issues
+
+  security_documentation:
+    - path: docs/security/THREAT_MODEL.md
+      content:
+        - Attack surface analysis and threat identification
+        - Authentication and authorization security model
+        - Data protection and privacy considerations
+        - API security best practices and implementation
+        - Discord bot security and permission management
+        - Infrastructure security and deployment hardening
+        
+    - path: docs/security/SECURITY_CHECKLIST.md
+      content:
+        - Input validation and sanitization verification
+        - Authentication mechanism security review
+        - Secret management and rotation procedures
+        - Network security and encryption validation
+        - Container security and vulnerability scanning
+        - Access control and audit logging verification
+
+dependency_validation:
+  critical_path_analysis:
+    - "Phase 0 → Phase 1: Architectural foundation must be solid before detailed specification"
+    - "Phase 1 → Phase 2,4,5: OpenAPI schema drives all subsequent implementation"
+    - "Phase 3 → Phase 6: Discord infrastructure must be validated before integration"
+    - "Phase 5 → Phase 6: Mock implementation provides integration contract"
+    - "Phase 6 → Phase 7: Real Discord integration must be working before comprehensive testing"
+    - "Phase 7 → Phase 8: Testing validates system before containerization"
+    - "Phase 8 → Phase 9: Container deployment enables production validation"
+
+  risk_mitigation:
+    - risk: "Discord API changes breaking integration"
+      mitigation: "Comprehensive mocking in Phase 5 provides isolation layer"
+    - risk: "Rate limiting implementation inadequate"
+      mitigation: "Detailed specification in Phase 1, extensive testing in Phase 7"
+    - risk: "Message splitting breaks complex formatting"
+      mitigation: "Algorithm specification in Phase 1, comprehensive test cases in Phase 7"
+    - risk: "Performance degradation under load"
+      mitigation: "Load testing in Phase 7, monitoring setup in Phase 9"
+    - risk: "Security vulnerabilities in production"
+      mitigation: "Security review in Phase 1, vulnerability scanning in Phase 8"
+
+success_metrics:
+  technical_metrics:
+    - "API response time p95 < 200ms"
+    - "Message processing latency p95 < 500ms"
+    - "System uptime > 99.5%"
+    - "Error rate < 0.1%"
+    - "Discord rate limit compliance 100%"
+    - "Test coverage > 85%"
+    
+  business_metrics:
+    - "Multi-AI conversation success rate > 95%"
+    - "Message attribution accuracy 100%"
+    - "User satisfaction score > 4.5/5"
+    - "System scalability to 100 concurrent conversations"
+    - "Zero security incidents in first 30 days"
+    - "MVP validation completed within timeline"
+
+operational_readiness:
+  monitoring_requirements:
+    - "Real-time system health dashboard"
+    - "Performance metrics and alerting"
+    - "Error tracking and analysis"
+    - "Discord API interaction monitoring"
+    - "Resource utilization tracking"
+    - "Security event monitoring"
+    
+  maintenance_procedures:
+    - "Automated backup and recovery"
+    - "Configuration change management"
+    - "Dependency update procedures"
+    - "Incident response playbooks"
+    - "Performance tuning guidelines"
+    - "Capacity planning procedures"
+
+notes:
+  - "Phase 3 and portions of Phase 9 require manual Chairman intervention"
+  - "Phases 4-8 are designed for full Copilot automation with proper specifications"
+  - "Each phase includes comprehensive validation to prevent downstream issues"
+  - "Technical scaffolding documents provide implementation guidance and quality gates"
+  - "The OpenAPI schema remains the single source of truth throughout all phases"
+  - "Error handling and recovery patterns are consistently applied across all phases"
+  - "Performance and security considerations are integrated into every phase"
+  - "Comprehensive testing strategy validates both individual components and complete workflows"

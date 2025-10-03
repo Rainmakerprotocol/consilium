@@ -1,0 +1,107 @@
+# Phase 0: Phase Progression and Project Roadmap
+# Dependencies, validation, and handoff protocols
+
+phases:
+  - id: 0
+    name: "Foundation & AI Orientation"
+    purpose: "Establish project context and AI alignment"
+    dependencies: []
+    deliverables: ["7 YAML foundation documents"]
+    validation_type: "document_completeness"
+    
+  - id: 1
+    name: "System Contracts & API Design"
+    purpose: "Define API contracts as source of truth"
+    dependencies: ["phase_0"]
+    deliverables: ["01_BLUEPRINT.yml", "01_ARCHITECTURE.yml", "01_IMPLEMENTATION.yml"]
+    validation_type: "openapi_schema_validation"
+    
+  - id: 2
+    name: "Repository Scaffold"
+    purpose: "Create project structure and dependencies"
+    dependencies: ["phase_1"]
+    deliverables: ["02_BLUEPRINT.yml", "02_ARCHITECTURE.yml", "02_IMPLEMENTATION.yml"]
+    validation_type: "directory_structure_validation"
+    
+  - id: 3
+    name: "Discord Infrastructure"
+    purpose: "Manual Discord bot setup and validation"
+    dependencies: ["phase_2"]
+    deliverables: ["03_BLUEPRINT.yml", "03_ARCHITECTURE.yml", "03_IMPLEMENTATION.yml"]
+    validation_type: "discord_connectivity_test"
+    
+  - id: 4
+    name: "FastAPI Core"
+    purpose: "Minimal viable FastAPI foundation"
+    dependencies: ["phase_2", "phase_3"]
+    deliverables: ["04_BLUEPRINT.yml", "04_ARCHITECTURE.yml", "04_IMPLEMENTATION.yml"]
+    validation_type: "application_startup_test"
+    
+  - id: 5
+    name: "API Endpoints (Mocked)"
+    purpose: "Implement API contracts with mocks"
+    dependencies: ["phase_4", "phase_1"]
+    deliverables: ["05_BLUEPRINT.yml", "05_ARCHITECTURE.yml", "05_IMPLEMENTATION.yml"]
+    validation_type: "endpoint_contract_compliance"
+    
+  - id: 6
+    name: "Discord Integration"
+    purpose: "Replace mocks with real Discord"
+    dependencies: ["phase_5", "phase_3"]
+    deliverables: ["06_BLUEPRINT.yml", "06_ARCHITECTURE.yml", "06_IMPLEMENTATION.yml"]
+    validation_type: "discord_message_flow_test"
+    
+  - id: 7
+    name: "Essential Testing"
+    purpose: "MVP-focused testing strategy"
+    dependencies: ["phase_5", "phase_6"]
+    deliverables: ["07_BLUEPRINT.yml", "07_ARCHITECTURE.yml", "07_IMPLEMENTATION.yml"]
+    validation_type: "test_coverage_and_functionality"
+    
+  - id: 8
+    name: "Simple Containerization"
+    purpose: "MVP-ready containerization"
+    dependencies: ["phase_4", "phase_5", "phase_6", "phase_7"]
+    deliverables: ["08_BLUEPRINT.yml", "08_ARCHITECTURE.yml", "08_IMPLEMENTATION.yml"]
+    validation_type: "container_deployment_test"
+    
+  - id: 9
+    name: "MVP Deployment"
+    purpose: "Deploy and validate multi-AI collaboration"
+    dependencies: ["phase_8"]
+    deliverables: ["09_BLUEPRINT.yml", "09_ARCHITECTURE.yml", "09_IMPLEMENTATION.yml"]
+    validation_type: "end_to_end_multi_ai_test"
+
+dependency_graph:
+  phase_0: []
+  phase_1: ["phase_0"]
+  phase_2: ["phase_1"]
+  phase_3: ["phase_2"]
+  phase_4: ["phase_2", "phase_3"]
+  phase_5: ["phase_4", "phase_1"]
+  phase_6: ["phase_5", "phase_3"]
+  phase_7: ["phase_5", "phase_6"]
+  phase_8: ["phase_4", "phase_5", "phase_6", "phase_7"]
+  phase_9: ["phase_8"]
+
+validation_criteria:
+  completion_gates:
+    document_completeness: "All required YAML sections populated"
+    functionality_test: "Core features working as specified"
+    integration_test: "External dependencies validated"
+    deployment_ready: "Container and environment validated"
+    
+handoff_protocols:
+  phase_transition:
+    - "Complete all deliverables for current phase"
+    - "Execute validation procedure for phase type"
+    - "Update PHASE_NOTES.txt with completion status"
+    - "Verify dependency requirements for next phase"
+  validation_procedures:
+    automated_checks: "YAML schema validation, file existence, basic syntax"
+    manual_verification: "Functional testing, integration validation"
+    
+ai_parsing_usage:
+  current_phase_check: "phases[current_phase_id].dependencies"
+  completion_validation: "validation_criteria.completion_gates"
+  next_phase_planning: "dependency_graph[next_phase]"

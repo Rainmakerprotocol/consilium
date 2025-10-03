@@ -1,0 +1,114 @@
+# Phase 0: GitHub Copilot Instructions
+# Direct automation guidance and code generation rules
+
+code_generation:
+  patterns:
+    fastapi_routes:
+      - "Use dependency injection for database, config, logging"
+      - "Include comprehensive input validation with Pydantic"
+      - "Return structured error responses matching OpenAPI schema"
+      - "Add correlation ID to all responses for tracing"
+    discord_integration:
+      - "Use async/await consistently with discord.py"
+      - "Implement message splitting with markdown preservation"
+      - "Include rate limiting with token bucket algorithm"
+      - "Add proper error handling and connection recovery"
+    pydantic_models:
+      - "Include field validation and custom validators"
+      - "Match OpenAPI schema exactly"
+      - "Add serialization aliases where needed"
+      - "Include docstrings for model fields"
+      
+  templates:
+    route_handler: |
+      @router.post("/endpoint")
+      async def handler(
+          request: RequestModel,
+          dependency: Dependency = Depends(get_dependency)
+      ) -> ResponseModel:
+          """Handler description."""
+          try:
+              # Implementation
+              return ResponseModel(...)
+          except Exception as e:
+              raise HTTPException(status_code=500, detail=str(e))
+              
+    pydantic_model: |
+      class ModelName(BaseModel):
+          """Model description."""
+          field: str = Field(..., description="Field description")
+          
+          @validator('field')
+          def validate_field(cls, v):
+              # Validation logic
+              return v
+              
+  style_preferences:
+    line_length: 80
+    string_quotes: "double"
+    trailing_commas: true
+    type_hints: "always_explicit"
+
+file_creation:
+  directory_structure:
+    src_api: "FastAPI routes, models, dependencies"
+    src_discord: "Discord client, message handlers, rate limiting"
+    src_core: "Configuration, logging, exceptions, utilities"
+    tests: "Mirror src structure with test_ prefix"
+    
+  naming_conventions:
+    files: "snake_case.py"
+    classes: "PascalCase"
+    functions: "snake_case"
+    constants: "UPPER_SNAKE_CASE"
+    test_files: "test_module_name.py"
+    
+  boilerplate:
+    python_file_header: |
+      """Module description.
+      
+      This module provides...
+      """
+      from __future__ import annotations
+      
+    test_file_header: |
+      """Tests for module_name."""
+      import pytest
+      from unittest.mock import Mock, patch
+      
+automation_rules:
+  when_to_automate:
+    - "Code generation for well-defined specifications"
+    - "Boilerplate creation following established patterns"
+    - "Test scaffolding based on implementation structure"
+    - "Configuration file generation from templates"
+    
+  manual_intervention_points:
+    - "Discord bot token generation and setup"
+    - "Environment-specific configuration values"
+    - "Manual testing and validation procedures"
+    - "Deployment credentials and secrets management"
+    
+  validation_before_generation:
+    - "Read relevant Phase 0 documents for context"
+    - "Verify OpenAPI schema compliance for API code"
+    - "Check dependency requirements are met"
+    - "Ensure phase completion criteria can be satisfied"
+
+context_injection:
+  relevant_files:
+    - "Always reference 00_PROJECT_MISSION.yml for MVP context"
+    - "Use 00_AI_AGENT_RULES.yml for coding standards"
+    - "Check 00_TECHNICAL_CONSTRAINTS.yml for technology limits"
+    - "Reference current phase BLUEPRINT.yml for requirements"
+    
+  reference_patterns:
+    phase_context: "/docs/consilium/{phase_number}_BLUEPRINT.yml"
+    implementation_guide: "/docs/consilium/{phase_number}_IMPLEMENTATION.yml"
+    technical_decisions: "/docs/consilium/TECHNICAL_DECISIONS.yml"
+    progress_tracking: "/docs/consilium/PHASE_NOTES.txt"
+    
+ai_parsing_usage:
+  code_patterns: "code_generation.patterns.*"
+  automation_decisions: "automation_rules.when_to_automate"
+  context_files: "context_injection.relevant_files"

@@ -1,0 +1,81 @@
+# Phase 5: API Endpoints (Mocked) - Architecture
+# Technical design for API endpoint implementation with realistic mocks
+
+phase_info:
+  id: 5
+  name: "API Endpoints (Mocked)"
+  focus: "Endpoint implementation patterns and mock data architecture"
+  
+architectural_decisions:
+  endpoint_design_patterns:
+    resource_organization:
+      - "RESTful resource URLs with clear hierarchies"
+      - "Consistent HTTP method semantics"
+      - "Proper status code usage for different scenarios"
+    request_handling:
+      - "Pydantic models for request validation"
+      - "Path parameter extraction and validation"
+      - "Query parameter handling for pagination"
+    response_architecture:
+      - "Consistent response envelope structure"
+      - "Resource metadata inclusion (URLs, timestamps)"
+      - "Pagination metadata for list endpoints"
+      
+  mock_data_strategy:
+    realistic_simulation:
+      - "Discord snowflake ID generation for authenticity"
+      - "Proper timestamp generation with timezone awareness"
+      - "Realistic message attribution metadata"
+    data_consistency:
+      - "In-memory data store for request session consistency"
+      - "Relationship maintenance between threads and messages"
+      - "Proper error simulation for edge cases"
+    behavioral_mocking:
+      - "Rate limiting simulation with 429 responses"
+      - "Authentication error simulation"
+      - "Validation error responses with detailed feedback"
+      
+  validation_architecture:
+    input_validation:
+      - "Pydantic model validation for all request bodies"
+      - "Custom validators for business logic constraints"
+      - "Path parameter validation with appropriate error responses"
+    schema_compliance:
+      - "OpenAPI schema validation for all responses"
+      - "Consistent error response format"
+      - "Type safety with proper serialization"
+      
+technical_specifications:
+  endpoint_implementations:
+    thread_management:
+      create_thread:
+        - "POST /threads with title, agent, model, run_id"
+        - "Generate mock Discord thread ID and URL"
+        - "Store thread metadata for subsequent operations"
+      get_thread:
+        - "GET /threads/{id} with thread metadata response"
+        - "404 handling for non-existent threads"
+        
+    message_handling:
+      post_message:
+        - "POST /threads/{id}/messages with content and attribution"
+        - "Message splitting simulation for >2000 characters"
+        - "Generate mock Discord message ID and URL"
+      get_messages:
+        - "GET /threads/{id}/messages with pagination support"
+        - "Return messages with attribution metadata"
+        - "Proper pagination with limit and after parameters"
+        
+  rate_limiting_simulation:
+    token_bucket_mock:
+      - "In-memory token bucket per API key"
+      - "Configurable rate limits for testing"
+      - "429 responses with rate limit headers"
+    graceful_degradation:
+      - "202 Accepted responses for queued requests"
+      - "Rate limit header inclusion in all responses"
+      
+ai_parsing_usage:
+  endpoint_patterns: "architectural_decisions.endpoint_design_patterns"
+  mock_strategy: "architectural_decisions.mock_data_strategy"
+  implementation_details: "technical_specifications"

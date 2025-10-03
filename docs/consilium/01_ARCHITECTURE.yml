@@ -1,0 +1,65 @@
+# Phase 1: System Contracts & API Design - Architecture
+# Technical design and architectural decisions for API contracts
+
+phase_info:
+  id: 1
+  name: "System Contracts & API Design"
+  focus: "API design patterns and contract validation"
+  
+architectural_decisions:
+  api_design_patterns:
+    rest_conventions:
+      - "RESTful resource-oriented URLs"
+      - "HTTP status codes follow RFC standards"
+      - "JSON request/response bodies with structured schemas"
+    versioning_strategy:
+      - "URL path versioning (/v1/endpoints)"
+      - "Backward compatibility within major versions"
+      - "OpenAPI schema version alignment"
+    authentication_design:
+      - "API key in X-API-Key header"
+      - "Stateless authentication for scalability"
+      - "Rate limiting per API key"
+      
+  data_models:
+    request_schemas:
+      thread_creation:
+        required_fields: ["title", "agent", "model", "run_id"]
+        optional_fields: ["initial_message"]
+      message_posting:
+        required_fields: ["content", "agent", "model", "run_id"]
+        validation_rules: ["content max 4000 chars", "run_id format validation"]
+    response_schemas:
+      success_patterns:
+        - "Consistent metadata structure"
+        - "Resource URLs for created entities"
+        - "Timestamp fields in ISO 8601 format"
+      error_patterns:
+        - "Structured error objects with code, message, details"
+        - "Validation error arrays for field-specific issues"
+        
+  integration_contracts:
+    discord_api_mapping:
+      - "Map API threads to Discord thread creation"
+      - "Map API messages to Discord message posting with embeds"
+      - "Map API message retrieval to Discord history fetch"
+    rate_limiting_design:
+      - "Token bucket algorithm specification"
+      - "Rate limit headers in responses"
+      - "Graceful degradation under load"
+      
+technical_specifications:
+  openapi_enhancements:
+    - "Complete request/response examples"
+    - "Comprehensive error response documentation"
+    - "Authentication security scheme definitions"
+    - "Rate limiting header documentation"
+  validation_framework:
+    - "Pydantic model validation for all schemas"
+    - "Custom validators for business logic"
+    - "Error message internationalization support"
+    
+ai_parsing_usage:
+  design_patterns: "architectural_decisions.api_design_patterns"
+  schema_requirements: "architectural_decisions.data_models"
+  technical_specs: "technical_specifications"

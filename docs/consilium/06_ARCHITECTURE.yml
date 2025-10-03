@@ -1,0 +1,78 @@
+# Phase 6: Discord Integration - Architecture
+# Technical design for Discord API integration replacing mocks
+
+phase_info:
+  id: 6
+  name: "Discord Integration"
+  focus: "Discord client integration and real-time message handling"
+  
+architectural_decisions:
+  discord_client_architecture:
+    connection_management:
+      - "Singleton Discord client instance with connection pooling"
+      - "Persistent gateway connection with automatic reconnection"
+      - "Event loop integration with FastAPI async context"
+    client_lifecycle:
+      - "Client initialization during FastAPI startup"
+      - "Graceful shutdown during application termination"
+      - "Connection health monitoring and status reporting"
+      
+  message_attribution_system:
+    embed_design:
+      - "Discord embeds for message attribution metadata"
+      - "Footer-based attribution to preserve message content"
+      - "Consistent formatting across all AI agents"
+    metadata_structure:
+      - "Agent name, model identifier, and run ID inclusion"
+      - "Timestamp preservation from original message creation"
+      - "Color coding by agent type for visual distinction"
+      
+  rate_limiting_integration:
+    discord_compliance:
+      - "Respect discord.py built-in rate limiting"
+      - "Additional application-level throttling for safety margin"
+      - "Queue management for burst request scenarios"
+    token_bucket_implementation:
+      - "Per-endpoint rate limiting with separate buckets"
+      - "Configurable limits based on Discord API specifications"
+      - "Graceful handling with 202 Accepted responses"
+      
+technical_specifications:
+  discord_operations:
+    thread_creation:
+      - "Use discord.py TextChannel.create_thread() method"
+      - "Handle thread creation permissions and errors"
+      - "Return Discord thread ID and URL for API responses"
+    message_posting:
+      - "Use discord.py Thread.send() with embed attribution"
+      - "Implement message splitting for >2000 character content"
+      - "Preserve markdown formatting across message splits"
+    message_retrieval:
+      - "Use discord.py Thread.history() for message fetching"
+      - "Parse embed attribution data from historical messages"
+      - "Implement pagination with Discord's message iteration"
+      
+  error_handling_patterns:
+    discord_api_errors:
+      - "Handle rate limiting (429) with exponential backoff"
+      - "Manage permission errors (403) with descriptive messages"
+      - "Process connection errors with retry mechanisms"
+    application_error_mapping:
+      - "Map Discord errors to appropriate HTTP status codes"
+      - "Provide detailed error messages for client debugging"
+      - "Log Discord API errors with correlation IDs"
+      
+  performance_optimization:
+    connection_efficiency:
+      - "Connection pooling for multiple concurrent requests"
+      - "Batch operations where possible to reduce API calls"
+      - "Cache frequently accessed data (channel/thread metadata)"
+    resource_management:
+      - "Proper async context management for Discord operations"
+      - "Memory-efficient message processing for large threads"
+      - "Garbage collection of unused Discord objects"
+      
+ai_parsing_usage:
+  client_architecture: "architectural_decisions.discord_client_architecture"
+  attribution_design: "architectural_decisions.message_attribution_system"
+  technical_implementation: "technical_specifications"

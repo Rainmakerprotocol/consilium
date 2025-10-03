@@ -1,0 +1,61 @@
+# Phase 0: AI Agent Rules and Coding Standards
+# Behavioral rules and coding standards for AI agents
+
+coding_standards:
+  python_conventions:
+    pep8: true
+    line_length: 80
+    type_hints: "mandatory"
+    docstrings: "google_style"
+  async_patterns:
+    async_def: "required_for_fastapi_and_discord"
+    event_loop_blocking: "never_allowed"
+  imports:
+    organization: "stdlib -> third_party -> local"
+    absolute_imports: true
+    
+file_organization:
+  src_structure:
+    api: "FastAPI routes, dependencies, middleware"
+    discord: "Discord client, message handling, rate limiting"
+    core: "Configuration, logging, utilities, exceptions"
+    main: "FastAPI application entrypoint"
+  import_patterns:
+    - "from src.core.config import settings"
+    - "from src.api.models import MessageRequest"
+  naming_conventions:
+    files: "snake_case.py"
+    classes: "PascalCase"
+    functions: "snake_case"
+    constants: "UPPER_CASE"
+    
+quality_gates:
+  testing:
+    framework: "pytest + pytest-asyncio"
+    coverage_minimum: 80
+    mock_external_apis: true
+  validation:
+    type_checking: "mypy strict mode"
+    code_formatting: "black + isort"
+    linting: "flake8"
+    
+ai_behavior:
+  constraints:
+    - "No hardcoded secrets - use environment variables"
+    - "All endpoints return structured JSON error objects"
+    - "Structured JSON logging with correlation IDs"
+    - "API key validation required on all endpoints"
+  expectations:
+    - "Generate complete, working code implementations"
+    - "Include comprehensive error handling"
+    - "Follow established patterns consistently"
+    - "Validate against quality gates before completion"
+  automation_rules:
+    - "Read Phase 0 documents before any code generation"
+    - "Reference OpenAPI schema as source of truth"
+    - "Validate phase completion before proceeding"
+    
+ai_parsing_usage:
+  code_generation_rules: "coding_standards + ai_behavior.expectations"
+  validation_requirements: "quality_gates"
+  constraint_enforcement: "ai_behavior.constraints"

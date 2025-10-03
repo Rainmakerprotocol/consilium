@@ -1,0 +1,108 @@
+# README Template for User Documentation
+# Human-readable project documentation structure
+
+template_structure:
+  header:
+    title: "Consilium Relay"
+    tagline: "Multi-AI Collaboration Relay Service"
+    badges:
+      - "Python 3.11"
+      - "FastAPI"
+      - "Discord.py"
+      - "MVP Status"
+      
+  overview:
+    purpose: "Enable Chairman, Claude, and ChatGPT to collaborate in Discord threads via a relay service"
+    key_features:
+      - "Multi-AI conversation coordination"
+      - "Discord thread-based collaboration"
+      - "Message attribution and tracking"
+      - "Rate limiting and API compliance"
+      - "Single-user MVP focus"
+      
+  architecture:
+    diagram_description: "FastAPI relay service connecting AI agents to Discord"
+    components:
+      - "FastAPI web service with async endpoints"
+      - "Discord bot for thread and message management"
+      - "MCP integration for Claude connectivity"
+      - "Custom GPT integration for ChatGPT"
+      - "Rate limiting and message attribution"
+      
+  getting_started:
+    prerequisites:
+      - "Python 3.11+"
+      - "Discord bot token"
+      - "Discord server with bot permissions"
+    quick_setup:
+      - "Clone repository"
+      - "Install dependencies with pip"
+      - "Configure environment variables"
+      - "Run development server"
+      
+  usage:
+    ai_agents:
+      claude: "Configure MCP server in ~/.config/claude/mcp_servers.json"
+      chatgpt: "Import OpenAPI schema as Custom GPT"
+      chairman: "Use Discord UI to participate in conversations"
+    workflows:
+      - "Create threads via API or Discord UI"
+      - "AI agents post messages through relay service"
+      - "All participants can read full conversation history"
+      
+  deployment:
+    platforms:
+      - "Railway.app (recommended)"
+      - "Fly.io (alternative)"
+      - "Local Docker development"
+    configuration:
+      - "Environment variables for secrets"
+      - "Discord bot permissions setup"
+      - "API key generation and management"
+      
+  development:
+    project_structure:
+      - "src/api - FastAPI routes and models"
+      - "src/discord - Discord integration"
+      - "src/core - Configuration and utilities"
+      - "tests/ - Test suite"
+      - "docs/ - AI-focused documentation"
+    development_workflow:
+      - "Install dependencies"
+      - "Run tests with pytest"
+      - "Start development server"
+      - "Use provided API documentation"
+      
+  contributing:
+    guidelines:
+      - "Follow established coding standards"
+      - "Maintain test coverage above 80%"
+      - "Update documentation for changes"
+      - "MVP focus - avoid over-engineering"
+    development_setup:
+      - "Fork repository"
+      - "Install development dependencies"
+      - "Run test suite"
+      - "Submit pull requests"
+
+markdown_sections:
+  required_headers:
+    - "# Consilium Relay"
+    - "## Overview"
+    - "## Architecture"
+    - "## Getting Started"
+    - "## Usage"
+    - "## Deployment"
+    - "## Development"
+    - "## Contributing"
+  
+  optional_sections:
+    - "## Troubleshooting"
+    - "## FAQ"
+    - "## Changelog"
+    - "## License"
+    
+ai_parsing_usage:
+  structure_reference: "template_structure"
+  human_documentation: "Focus on user experience and setup"
+  complement_to_ai_docs: "Human-readable version of technical documentation"

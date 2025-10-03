@@ -1,0 +1,358 @@
+# Consilium MVP Documentation Tree - AI-Optimized Machine-Readable Format
+# Structured data formats optimized for AI parsing and automation
+
+documentation_structure:
+  root: /docs/consilium/
+  approach: "Flat file structure with machine-readable formats for optimal AI consumption"
+  target_audience: "AI agents, Copilot automation, and programmatic processing"
+  
+  file_format_strategy:
+    primary_format: "YAML (.yml) - structured, parseable, supports complex data types"
+    secondary_format: "JSON (.json) - for API schemas and configuration data"
+    notes_format: "Plain text (.txt) - for dynamic AI note-taking and logging"
+    
+  file_naming_convention: "XX_PHASE_TYPE.yml where XX is phase number, TYPE is document purpose"
+  prompt_path_usage: "Structured data enables precise field extraction and context injection"
+  ai_parsing_benefits: "YAML structure allows AI to extract specific sections, validate completeness, and track progress programmatically"
+  
+  phase_documentation_patterns:
+    phase_0_exception: "Comprehensive AI alignment - multiple YAML documents with structured data"
+    phases_1_9: "Exactly 3 YAML documents: BLUEPRINT, ARCHITECTURE, IMPLEMENTATION"
+  
+  phase_specific_documentation:
+    
+    # Phase 0: Comprehensive AI Alignment & Project Foundation
+    phase_0/:
+      purpose: "Complete AI agent orientation and project alignment"
+      document_count: "Exception - multiple structured documents for thorough AI guidance"
+      documents:
+        00_PROJECT_MISSION.yml:
+          format: "YAML with structured project data"
+          content: 
+            - "project: {name, description, mvp_definition, success_criteria}"
+            - "stakeholders: {chairman, ai_agents: [claude, chatgpt]}"
+            - "business_context: {vision, constraints, timeline}"
+          ai_parsing: "Extract project.mvp_definition for context, validate against success_criteria"
+          
+        00_AI_AGENT_RULES.yml:
+          format: "YAML with coding standards and behavioral rules"
+          content:
+            - "coding_standards: {pep8, type_hints, async_patterns, line_length}"
+            - "file_organization: {src_structure, import_patterns, naming_conventions}"
+            - "quality_gates: {testing, coverage, validation}"
+            - "ai_behavior: {constraints, expectations, automation_rules}"
+          ai_parsing: "Load coding_standards.* and ai_behavior.* for code generation rules"
+          
+        00_TECHNICAL_CONSTRAINTS.yml:
+          format: "YAML with technology stack and architectural decisions"
+          content:
+            - "technology_stack: {runtime: python-3.11, framework: fastapi, database: none}"
+            - "architectural_principles: {async_first, single_user, mvp_focused}"
+            - "performance_requirements: {response_time, throughput, resource_limits}"
+            - "mvp_limitations: {features, scalability, security}"
+          ai_parsing: "Reference technology_stack and architectural_principles for implementation decisions"
+          
+        00_COLLABORATION_PATTERNS.yml:
+          format: "YAML with multi-AI interaction specifications"
+          content:
+            - "ai_agents: {claude: {protocol: mcp}, chatgpt: {protocol: custom_gpt}, chairman: {protocol: discord_ui}}"
+            - "message_attribution: {agent, model, run_id, timestamp}"
+            - "conversation_flow: {thread_creation, message_posting, response_handling}"
+            - "discord_integration: {channel_setup, permissions, rate_limiting}"
+          ai_parsing: "Use ai_agents.* for client integration, message_attribution for implementation"
+          
+        00_PHASE_PROGRESSION.yml:
+          format: "YAML with phase dependencies and roadmap"
+          content:
+            - "phases: [{id: 0, name, purpose, dependencies: [], deliverables: []}]"
+            - "dependency_graph: {phase_0: [], phase_1: [phase_0], ...}"
+            - "validation_criteria: {completion_gates, quality_checks}"
+            - "handoff_protocols: {phase_transition, validation_procedures}"
+          ai_parsing: "Check phases[current].dependencies before starting, validate against completion_gates"
+          
+        00_VALIDATION_FRAMEWORK.yml:
+          format: "YAML with structured validation and quality gates"
+          content:
+            - "quality_gates: {code_quality, test_coverage, documentation, functionality}"
+            - "testing_requirements: {unit_tests, integration_tests, e2e_scenarios}"
+            - "completion_criteria: {phase_specific_requirements, overall_mvp_criteria}"
+            - "validation_procedures: {automated_checks, manual_verification}"
+          ai_parsing: "Execute validation_procedures.automated_checks, verify completion_criteria"
+          
+        00_COPILOT_INSTRUCTIONS.yml:
+          format: "YAML with GitHub Copilot automation configuration"
+          content:
+            - "code_generation: {patterns, templates, style_preferences}"
+            - "file_creation: {directory_structure, naming_conventions, boilerplate}"
+            - "automation_rules: {when_to_automate, manual_intervention_points}"
+            - "context_injection: {relevant_files, reference_patterns}"
+          ai_parsing: "Load code_generation.patterns and automation_rules for Copilot behavior"
+
+    # Phase 1: System Contracts & API Design  
+    phase_1/:
+      purpose: "Define API contracts and data models as source of truth"
+      documents:
+        01_BLUEPRINT.yml:
+          format: "YAML with structured API requirements"
+          content:
+            - "api_contract: {openapi_version: '3.0.3', source_of_truth: true}"
+            - "endpoints: [{path, method, purpose, requirements}]"
+            - "data_models: [{name, purpose, validation_rules}]"
+            - "discord_integration: {connection_points, data_flow}"
+          ai_parsing: "Extract endpoints.* for route generation, data_models.* for Pydantic classes"
+          
+        01_ARCHITECTURE.yml:
+          format: "YAML with technical design specifications"
+          content:
+            - "api_patterns: {route_organization, dependency_injection, middleware_chain}"
+            - "request_response_flow: {validation, processing, formatting, error_handling}"
+            - "discord_integration: {client_setup, message_handling, rate_limiting}"
+            - "error_strategy: {exception_hierarchy, client_responses, logging}"
+          ai_parsing: "Reference api_patterns.* for code structure, error_strategy for exception handling"
+          
+        01_IMPLEMENTATION.yml:
+          format: "YAML with concrete implementation specifications"
+          content:
+            - "pydantic_models: [{class_name, fields: [{name, type, validation}]}]"
+            - "openapi_compliance: {schema_validation, example_generation}"
+            - "mock_data: {strategy, realistic_values, test_scenarios}"
+            - "validation_rules: {input_sanitization, business_logic, security_checks}"
+          ai_parsing: "Generate code from pydantic_models.*, implement validation_rules.*"
+
+    # Phase 2: Repository Scaffold
+    phase_2/:
+      purpose: "Create clean project structure and dependency management"
+      documents:
+        02_BLUEPRINT.md:
+          content: "Directory structure, dependency strategy, development tooling requirements, and MVP-focused package organization"
+          prompt_usage: "Project structure and organization requirements"
+          
+        02_ARCHITECTURE.md:
+          content: "Module boundaries, import patterns, configuration management, and build/test automation structure"
+          prompt_usage: "Code organization and architectural boundaries"
+          
+        02_IMPLEMENTATION.md:
+          content: "File templates, requirements.txt specifications, .env setup, and development workflow automation"
+          prompt_usage: "File creation templates and setup procedures"
+
+    # Phase 3: Discord Infrastructure
+    phase_3/:
+      purpose: "Manual Discord bot setup and validation"
+      documents:
+        03_BLUEPRINT.md:
+          content: "Discord bot requirements, permission model, channel setup, and Chairman-only access patterns"
+          prompt_usage: "Discord integration requirements and constraints"
+          
+        03_ARCHITECTURE.md:
+          content: "Discord API integration points, bot lifecycle management, and single-server deployment model"
+          prompt_usage: "Discord technical integration architecture"
+          
+        03_IMPLEMENTATION.md:
+          content: "Step-by-step bot creation, validation scripts, troubleshooting procedures, and environment configuration"
+          prompt_usage: "Manual setup procedures and validation scripts"
+
+    # Phase 4: FastAPI Core
+    phase_4/:
+      purpose: "Minimal viable FastAPI foundation"
+      documents:
+        04_BLUEPRINT.md:
+          content: "FastAPI app structure, essential middleware, configuration management, and health check requirements"
+          prompt_usage: "Core application requirements and structure"
+          
+        04_ARCHITECTURE.md:
+          content: "Application lifecycle, dependency injection patterns, logging strategy, and error handling framework"
+          prompt_usage: "Application architecture and design patterns"
+          
+        04_IMPLEMENTATION.md:
+          content: "main.py structure, config.py patterns, logging setup, and middleware chain implementation"
+          prompt_usage: "Core file implementations and code patterns"
+
+    # Phase 5: API Endpoints (Mocked)
+    phase_5/:
+      purpose: "Implement API contracts with realistic mocks"
+      documents:
+        05_BLUEPRINT.md:
+          content: "Endpoint implementation requirements, mock data strategy, validation patterns, and testing approach"
+          prompt_usage: "API endpoint requirements and mock strategy"
+          
+        05_ARCHITECTURE.md:
+          content: "Route organization, request validation, response formatting, and transition strategy to real Discord"
+          prompt_usage: "API architecture and mock-to-real transition design"
+          
+        05_IMPLEMENTATION.md:
+          content: "Route handlers, Pydantic models, mock Discord responses, and comprehensive input validation"
+          prompt_usage: "API implementation patterns and mock data generation"
+
+    # Phase 6: Discord Integration
+    phase_6/:
+      purpose: "Replace mocks with real Discord functionality"
+      documents:
+        06_BLUEPRINT.md:
+          content: "Discord client requirements, message handling strategy, rate limiting approach, and attribution system"
+          prompt_usage: "Discord integration requirements and message handling"
+          
+        06_ARCHITECTURE.md:
+          content: "discord.py integration, message splitting algorithm, queue management, and error recovery patterns"
+          prompt_usage: "Discord client architecture and advanced features"
+          
+        06_IMPLEMENTATION.md:
+          content: "Discord client setup, message handlers, rate limiter, and seamless mock-to-real transition"
+          prompt_usage: "Discord integration implementation and transition procedures"
+
+    # Phase 7: Essential Testing
+    phase_7/:
+      purpose: "MVP-focused testing strategy"
+      documents:
+        07_BLUEPRINT.md:
+          content: "Testing scope for MVP, coverage targets, essential test types, and validation requirements"
+          prompt_usage: "Testing requirements and coverage expectations"
+          
+        07_ARCHITECTURE.md:
+          content: "Test organization, mocking strategy, fixture management, and CI/CD integration points"
+          prompt_usage: "Test architecture and organization patterns"
+          
+        07_IMPLEMENTATION.md:
+          content: "Test suites, mock Discord client, integration scenarios, and automated validation"
+          prompt_usage: "Test implementation patterns and validation procedures"
+
+    # Phase 8: Simple Containerization
+    phase_8/:
+      purpose: "MVP-ready containerization"
+      documents:
+        08_BLUEPRINT.md:
+          content: "Container requirements, deployment targets, security basics, and single-instance deployment"
+          prompt_usage: "Containerization requirements and deployment targets"
+          
+        08_ARCHITECTURE.md:
+          content: "Docker strategy, environment management, health checks, and local development support"
+          prompt_usage: "Container architecture and environment management"
+          
+        08_IMPLEMENTATION.md:
+          content: "Dockerfile, docker-compose.yml, environment configuration, and deployment scripts"
+          prompt_usage: "Container implementation and deployment procedures"
+
+    # Phase 9: MVP Deployment
+    phase_9/:
+      purpose: "Deploy and validate multi-AI collaboration"
+      documents:
+        09_BLUEPRINT.md:
+          content: "Deployment targets, MVP validation criteria, multi-AI setup requirements, and success metrics"
+          prompt_usage: "Deployment requirements and validation criteria"
+          
+        09_ARCHITECTURE.md:
+          content: "Cloud deployment options, monitoring basics, client integration patterns, and operational considerations"
+          prompt_usage: "Deployment architecture and operational design"
+          
+        09_IMPLEMENTATION.md:
+          content: "Deployment procedures, client configurations (Claude MCP, ChatGPT Custom GPT), and validation workflows"
+          prompt_usage: "Deployment implementation and client setup procedures"
+
+  # Supporting Documentation (Machine-Readable Formats)
+  support_docs/:
+    purpose: "Essential support files optimized for AI parsing and automation"
+    documents:
+      TECHNICAL_DECISIONS.yml:
+        format: "YAML with structured decision tracking"
+        content:
+          - "framework_choice: {decision: fastapi, rationale, alternatives_considered}"
+          - "discord_library: {decision: discord.py, rationale, integration_benefits}"
+          - "rate_limiting: {decision: token_bucket, implementation_approach}"
+          - "architecture_patterns: {async_first: true, single_user: true, mvp_focused: true}"
+        ai_parsing: "Reference decisions.* for implementation consistency, rationale for context"
+        
+      TROUBLESHOOTING_GUIDE.yml:
+        format: "YAML with structured problem-solution mapping"
+        content:
+          - "discord_issues: [{symptom, diagnosis, solution, prevention}]"
+          - "api_errors: [{error_code, cause, resolution, validation}]"
+          - "message_processing: [{issue_type, troubleshooting_steps, fixes}]"
+          - "environment_setup: [{problem, solution, verification_steps}]"
+        ai_parsing: "Query by symptom/error_code to find relevant solutions and prevention"
+        
+      AI_COLLABORATION_STANDARDS.yml:
+        format: "YAML with multi-AI interaction protocols"
+        content:
+          - "message_formats: {decision_brief, position_statement, technical_proposal, consensus_summary}"
+          - "attribution_standards: {required_fields: [agent, model, run_id, timestamp]}"
+          - "conversation_flow: {thread_creation, message_posting, response_handling, conflict_resolution}"
+          - "quality_standards: {message_length, formatting_rules, response_time_expectations}"
+        ai_parsing: "Use message_formats.* for consistent communication, attribution_standards for implementation"
+        
+      PHASE_NOTES.txt:
+        format: "Plain text for dynamic AI note-taking and logging"
+        content: "Append-only log file for AI agents to track progress, issues, decisions, and learnings"
+        ai_parsing: "Write timestamped entries, read for context and progress tracking"
+        structure:
+          - "[TIMESTAMP] PHASE_X: progress_note"
+          - "[TIMESTAMP] ISSUE: problem_description"
+          - "[TIMESTAMP] DECISION: choice_made_and_rationale"
+          - "[TIMESTAMP] LEARNING: insight_or_pattern_discovered"
+
+flat_structure_benefits:
+  prompt_path_efficiency:
+    - "Easy file referencing: /docs/consilium/01_BLUEPRINT.md"
+    - "Direct context injection for AI prompts"
+    - "Simple navigation without nested folder complexity"
+    - "Consistent numbering enables sequential processing"
+    
+  ai_workflow_optimization:
+    - "Files serve as both specification and note-taking space"
+    - "Clear document naming for AI understanding"
+    - "Phase progression tracking through numbered files"
+    - "Supporting docs provide consistent reference points"
+
+documentation_constraints:
+  phase_0_exception:
+    - "7 comprehensive documents for complete AI alignment"
+    - "Covers all aspects: mission, rules, constraints, patterns, progression, validation, automation"
+    - "Serves as master reference for all subsequent phases"
+    
+  phases_1_9_standard:
+    - "Exactly 3 documents per phase: BLUEPRINT, ARCHITECTURE, IMPLEMENTATION"
+    - "BLUEPRINT: What needs to be done and why"
+    - "ARCHITECTURE: How it should be designed technically"
+    - "IMPLEMENTATION: Specific code patterns and validation steps"
+    
+  support_documentation:
+    - "4 living documents that evolve throughout project"
+    - "TECHNICAL_DECISIONS: Key choices and rationale"
+    - "TROUBLESHOOTING_GUIDE: Common issues and solutions"
+    - "AI_COLLABORATION_STANDARDS: Multi-AI interaction protocols"
+    - "PHASE_NOTES: Dynamic AI note-taking and progress tracking"
+
+final_file_structure:
+  location: "/docs/consilium/"
+  total_files: "34 files (7 YAML + 27 YAML + 3 YAML + 1 TXT)"
+  
+  file_formats:
+    yaml_files: "31 structured YAML documents for AI parsing and data extraction"
+    text_files: "1 plain text file for dynamic note-taking and logging"
+    json_potential: "OpenAPI schemas may reference external JSON files if needed"
+  
+  file_list:
+    phase_0: "00_PROJECT_MISSION.yml, 00_AI_AGENT_RULES.yml, 00_TECHNICAL_CONSTRAINTS.yml, 00_COLLABORATION_PATTERNS.yml, 00_PHASE_PROGRESSION.yml, 00_VALIDATION_FRAMEWORK.yml, 00_COPILOT_INSTRUCTIONS.yml"
+    phases_1_9: "01-09_BLUEPRINT.yml, 01-09_ARCHITECTURE.yml, 01-09_IMPLEMENTATION.yml (27 files)"
+    support: "TECHNICAL_DECISIONS.yml, TROUBLESHOOTING_GUIDE.yml, AI_COLLABORATION_STANDARDS.yml, PHASE_NOTES.txt"
+    
+  ai_parsing_benefits:
+    structured_data: "YAML enables field-specific extraction: project.mvp_definition, endpoints[0].requirements"
+    validation_support: "AI can validate document completeness against expected schema"
+    programmatic_access: "Direct parsing into data structures for decision-making logic"
+    context_injection: "Precise field extraction for targeted prompt enhancement"
+    progress_tracking: "Structured data enables automated progress monitoring and validation"
+
+success_criteria:
+  mvp_definition: "Chairman + Claude + ChatGPT collaborating in Discord thread via relay"
+  
+  documentation_success:
+    - "AI agents can navigate and use documentation effectively"
+    - "Prompt paths enable efficient context injection"
+    - "Phase progression is clear and actionable"
+    - "Note-taking capabilities support iterative development"
+    
+  implementation_success:
+    - "Multi-AI conversation flows through Discord successfully"
+    - "Message attribution works correctly for all agents"
+    - "Rate limiting prevents Discord API violations"
+    - "System handles typical conversation loads reliably"
+    - "Chairman can observe and participate in AI discussions"

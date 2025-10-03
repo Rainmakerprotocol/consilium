@@ -1,0 +1,58 @@
+# Technical Decisions Log
+# Architectural decisions and rationale tracking
+
+decisions:
+  framework_selection:
+    decision: "FastAPI chosen as web framework"
+    rationale: "Async-first design, automatic OpenAPI generation, type safety with Pydantic"
+    alternatives_considered: ["Flask", "Django", "Starlette"]
+    date: "Phase 1"
+    status: "accepted"
+    
+  discord_library:
+    decision: "discord.py for Discord integration"
+    rationale: "Mature async library, gateway management, comprehensive API coverage"
+    alternatives_considered: ["py-cord", "disnake", "raw Discord API"]
+    date: "Phase 1"
+    status: "accepted"
+    
+  rate_limiting_strategy:
+    decision: "Token bucket algorithm for Discord API rate limiting"
+    rationale: "Smooth request distribution, burst handling, predictable behavior"
+    alternatives_considered: ["Fixed window", "Sliding window", "No rate limiting"]
+    date: "Phase 1"
+    status: "accepted"
+    
+  authentication_approach:
+    decision: "Simple API key authentication for MVP"
+    rationale: "Minimal complexity for single-user system, easily testable"
+    alternatives_considered: ["OAuth2", "JWT tokens", "Discord OAuth"]
+    date: "Phase 1"
+    status: "accepted"
+    
+  deployment_target:
+    decision: "Railway.app as primary deployment platform"
+    rationale: "Simple container deployment, environment variable management, cost-effective for MVP"
+    alternatives_considered: ["Fly.io", "Heroku", "DigitalOcean", "AWS"]
+    date: "Phase 1"
+    status: "accepted"
+    
+  message_attribution:
+    decision: "Discord embed footers for AI agent attribution"
+    rationale: "Visible but non-intrusive, supports structured metadata, preserves message content"
+    alternatives_considered: ["Message prefixes", "Webhook names", "Thread titles"]
+    date: "Phase 1"
+    status: "accepted"
+
+decision_template:
+  decision: "Brief statement of what was decided"
+  rationale: "Why this decision was made, benefits and trade-offs"
+  alternatives_considered: ["Other options that were evaluated"]
+  date: "Phase when decision was made"
+  status: "accepted | rejected | superseded | pending"
+  impact: "How this affects implementation and future decisions"
+  
+ai_parsing_usage:
+  current_decisions: "decisions.*"
+  decision_reference: "Use for consistent implementation choices"
+  template_usage: "decision_template for documenting new decisions"
