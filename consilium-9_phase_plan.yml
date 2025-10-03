@@ -1,0 +1,521 @@
+project:
+  name: consilium-relay
+  description: Multi-AI collaboration relay service using Discord as message board
+  runtime: python-3.11
+  framework: fastapi
+  mvp_definition: Chairman, Claude, and ChatGPT all posting and reading messages in same Discord thread
+
+phases:
+  - phase: 0
+    name: Parent Doc & Copilot Orientation
+    purpose: Establish project context, coding standards, and constraints before any code generation
+    type: documentation
+    copilot_can_automate: false
+    
+    deliverables:
+      - path: docs/00_COPILOT_README.md
+        content:
+          - Project overview (Consilium purpose and architecture)
+          - Doc system organization and how to navigate
+          - Coding standards (PEP 8, type hints required, async patterns)
+          - Hygiene rules (no secrets in code, 80-char lines, docstring format)
+          - Test expectations (pytest, >80% coverage, mock external APIs)
+          - File organization rules (where code lives, import patterns)
+    
+    dependencies: []
+    
+    validation:
+      - Document exists in docs/ folder
+      - Contains all required sections
+      - Includes examples of compliant vs non-compliant code
+    
+    copilot_instructions: |
+      This phase is human-authored. Chairman writes parent doc before 
+      Copilot begins code generation. Copilot should read this doc first
+      to understand constraints and conventions.
+
+  - phase: 1
+    name: System Specifications & Interface Contracts
+    purpose: Define complete system architecture and API contracts
+    type: specification
+    copilot_can_automate: partial
+    
+    deliverables:
+      - path: docs/01_SYSTEM_SPEC.yaml
+        content:
+          - Component architecture (relay, Discord bot, API endpoints)
+          - Data flow diagrams (request -> processing -> response)
+          - Integration points (Discord API, AI clients)
+          
+      - path: docs/02_OPENAPI_SCHEMA.yaml
+        content:
+          - Complete OpenAPI v1 specification
+          - All three endpoints with request/response schemas
+          - Error response formats (400, 401, 404, 429)
+          - Authentication mechanism (API key header)
+          
+      - path: docs/03_DATA_MODELS.md
+        content:
+          - Pydantic model specifications
+          - Field constraints and validation rules
+          - Example valid/invalid payloads
+    
+    dependencies:
+      - phase: 0
+    
+    validation:
+      - OpenAPI schema validates with openapi-spec-validator
+      - All data models include type hints
+      - All fields have validation constraints specified
+    
+    copilot_instructions: |
+      Use OpenAPI schema from Phase 1 as source of truth for all
+      endpoint implementations. Generate Pydantic models that exactly
+      match schema definitions. Include validation rules from spec.
+
+  - phase: 2
+    name: Repository Foundation & Dependencies
+    purpose: Scaffold directory structure and declare dependencies
+    type: infrastructure
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: src/api/__init__.py
+      - path: src/discord/__init__.py
+      - path: src/core/__init__.py
+      - path: tests/__init__.py
+      - path: docs/
+      
+      - path: requirements.txt
+        content:
+          - fastapi==0.104.1
+          - uvicorn==0.24.0
+          - pydantic==2.4.2
+          - discord.py==2.3.2
+          - python-dotenv==1.0.0
+          - pytest==7.4.3
+          - pytest-asyncio==0.21.1
+          - pytest-mock==3.12.0
+          
+      - path: .env.example
+        content:
+          - DISCORD_BOT_TOKEN=your_bot_token_here
+          - DISCORD_GUILD_ID=your_guild_id_here
+          - DISCORD_CHANNEL_ID=your_channel_id_here
+          - CONSILIUM_API_KEY=your_api_key_here
+          - LOG_LEVEL=INFO
+          
+      - path: .gitignore
+        content:
+          - .env
+          - __pycache__/
+          - "*.pyc"
+          - .pytest_cache/
+          - .coverage
+          
+      - path: pyproject.toml
+        content:
+          - Tool configurations (black, isort, mypy)
+          
+      - path: README.md
+        content:
+          - Project overview
+          - Setup instructions
+          - Running locally
+    
+    dependencies:
+      - phase: 1
+    
+    validation:
+      - pip install -r requirements.txt succeeds
+      - All __init__.py files exist
+      - Directory structure matches specification
+    
+    copilot_instructions: |
+      Create directory tree as specified. Use exact versions in 
+      requirements.txt. Ensure .env.example documents all required
+      environment variables with descriptive comments.
+
+  - phase: 3
+    name: Discord Infrastructure Setup
+    purpose: Create Discord bot and server infrastructure
+    type: manual
+    copilot_can_automate: false
+    
+    deliverables:
+      - description: Discord bot registered in Developer Portal
+      - description: Message Content intent enabled
+      - description: Bot token generated and saved
+      - description: Discord server created with #consilium-architecture channel
+      - description: Bot invited to server with proper permissions
+      
+      - path: .env
+        content:
+          - DISCORD_BOT_TOKEN populated with real token
+          - DISCORD_GUILD_ID populated with server ID
+          - DISCORD_CHANNEL_ID populated with channel ID
+          
+      - path: docs/04_DISCORD_SETUP.md
+        content:
+          - Step-by-step manual process followed
+          - Screenshots of Developer Portal settings
+          - Troubleshooting notes
+    
+    dependencies:
+      - phase: 2
+    
+    validation:
+      - Bot appears in Discord server member list
+      - Bot token in .env is 50+ characters
+      - Guild and Channel IDs are 18-digit strings
+      - Bot has Send Messages and Read Message History permissions
+    
+    copilot_instructions: |
+      This phase is entirely manual. Chairman must complete before
+      proceeding. Copilot can reference .env values but cannot
+      create them.
+
+  - phase: 4
+    name: Core Framework
+    purpose: Build executable FastAPI foundation
+    type: implementation
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: src/main.py
+        requirements:
+          - FastAPI app initialization
+          - Startup event to log app start
+          - Shutdown event to cleanup resources
+          - Health check endpoint at GET /health
+          - CORS middleware configured
+          
+      - path: src/core/config.py
+        requirements:
+          - Pydantic BaseSettings class
+          - Load all env vars from .env
+          - Validate required fields on startup
+          - Type hints for all config fields
+          
+      - path: src/core/logging.py
+        requirements:
+          - Structured JSON logging
+          - Request ID generation middleware
+          - Log levels configurable via env var
+          - Log format includes timestamp, level, message, context
+    
+    dependencies:
+      - phase: 2
+      - phase: 3
+    
+    validation:
+      - uvicorn src.main:app starts without errors
+      - GET /health returns 200 with {"status":"healthy"}
+      - Logs appear in JSON format
+      - Missing .env variables cause startup failure with clear error
+    
+    copilot_instructions: |
+      Generate FastAPI app following async patterns. Use Pydantic
+      BaseSettings for config loading. Implement structured logging
+      with request IDs for traceability. App must fail fast if
+      required env vars missing.
+
+  - phase: 5
+    name: API Endpoints with Mock Responses
+    purpose: Implement API contract with mocked Discord responses
+    type: implementation
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: src/api/models.py
+        requirements:
+          - Author model (agent, model, run_id fields)
+          - PostMessageRequest model
+          - PostMessageResponse model
+          - FetchMessagesResponse model
+          - StartThreadRequest model
+          - StartThreadResponse model
+          - All models match OpenAPI schema from Phase 1
+          
+      - path: src/api/routes.py
+        requirements:
+          - POST /v1/strategy/start-thread
+            - Accepts title and optional seed_message
+            - Returns mock thread_id and URL
+            - Status 201 on success
+          - POST /v1/strategy/post
+            - Accepts thread_id, author, content
+            - Validates author structure
+            - Returns mock message_id(s)
+            - Status 201 on success, 202 if queued
+          - GET /v1/strategy/fetch
+            - Accepts thread_id, optional after_ts, limit
+            - Returns mock message list
+            - Status 200 on success
+          - All endpoints validate input against schemas
+          - All endpoints return proper error responses
+          
+      - path: src/api/dependencies.py
+        requirements:
+          - API key validation dependency
+          - Rate limiting placeholder (stub for now)
+    
+    dependencies:
+      - phase: 4
+      - phase: 1
+    
+    validation:
+      - All endpoints return correct status codes
+      - Invalid requests return 400 with detailed errors
+      - Missing API key returns 401
+      - Mock responses conform to OpenAPI schema
+      - Responses include proper content-type headers
+    
+    copilot_instructions: |
+      Implement routes using Pydantic models from Phase 1 spec.
+      Return hardcoded mock data that matches response schemas.
+      Mock data should be realistic (valid thread IDs, timestamps, etc).
+      Phase 6 will replace mocks with real Discord calls - design
+      route handlers to make this swap easy.
+
+  - phase: 6
+    name: Discord Client Integration
+    purpose: Replace mocks with real Discord API calls
+    type: implementation
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: src/discord/client.py
+        requirements:
+          - discord.py bot client class
+          - Initialize with token from config
+          - Connect to Discord gateway
+          - Handle connection errors gracefully
+          - Expose methods: create_thread, send_message, fetch_messages
+          
+      - path: src/discord/message_handler.py
+        requirements:
+          - split_message function
+            - Split at 2000 characters
+            - Preserve code fences across splits
+            - Return list of message chunks
+          - enqueue_message function
+            - Queue messages to respect rate limits
+            - Return immediately with 202 if queued
+            - Process queue in background
+          - send_with_attribution function
+            - Add author embed footer
+            - Format: "Posted by {agent} ({model}) - Run: {run_id}"
+            - Handle Discord API errors
+            
+      - path: src/api/routes.py (modified)
+        requirements:
+          - Replace mock responses with Discord client calls
+          - start-thread -> client.create_thread
+          - post -> message_handler.enqueue_message
+          - fetch -> client.fetch_messages
+          - Keep same request/response signatures
+    
+    dependencies:
+      - phase: 5
+      - phase: 3
+    
+    validation:
+      - POST to /v1/strategy/post creates real message in Discord
+      - GET /v1/strategy/fetch returns actual Discord messages
+      - Messages >2000 chars split correctly
+      - Attribution embeds appear in Discord
+      - Rate limiting prevents 429 errors from Discord
+      - Connection errors logged and return 503
+    
+    copilot_instructions: |
+      Use discord.py library. Handle async properly with FastAPI.
+      Implement rate limiting to stay under Discord's limits
+      (50 requests per second per route). Split messages while
+      preserving markdown formatting. Add attribution as embeds,
+      not in message body.
+
+  - phase: 7
+    name: Testing Suite
+    purpose: Validate all components independently and together
+    type: testing
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: tests/conftest.py
+        requirements:
+          - Pytest fixtures for FastAPI test client
+          - Mock Discord client fixture
+          - Mock config fixture with test values
+          
+      - path: tests/test_message_handler.py
+        requirements:
+          - test_split_under_limit - message <2000 chars unchanged
+          - test_split_at_exact_limit - 2000 char message unchanged
+          - test_split_over_limit - 2500 chars becomes 2 chunks
+          - test_split_preserves_code_fence - ``` blocks not broken
+          - test_split_multiple_chunks - 5000 chars becomes 3 chunks
+          
+      - path: tests/test_routes.py
+        requirements:
+          - Test each endpoint with valid input
+          - Test each endpoint with invalid input (400 cases)
+          - Test missing API key (401 case)
+          - Test nonexistent thread (404 case)
+          - Use mocked Discord client
+          
+      - path: tests/test_integration.py
+        requirements:
+          - Full flow test: create thread -> post -> fetch
+          - Verify message appears in fetch results
+          - Test with mocked Discord API
+          
+      - path: pytest.ini
+        requirements:
+          - Configure pytest
+          - Set asyncio mode
+          - Coverage settings
+    
+    dependencies:
+      - phase: 5
+      - phase: 6
+    
+    validation:
+      - pytest tests/ passes all tests
+      - Coverage >80% on src/api and src/discord modules
+      - No tests marked as xfail or skip
+      - Tests run in <10 seconds
+    
+    copilot_instructions: |
+      Write pytest tests using pytest-asyncio for async functions.
+      Mock Discord API calls using pytest-mock. Test edge cases
+      (empty messages, very long messages, special characters).
+      Use descriptive test names that explain what's being validated.
+
+  - phase: 8
+    name: Containerization
+    purpose: Package relay as reproducible Docker container
+    type: infrastructure
+    copilot_can_automate: true
+    
+    deliverables:
+      - path: Dockerfile
+        requirements:
+          - FROM python:3.11-slim
+          - WORKDIR /app
+          - Copy requirements.txt and install
+          - Copy src/ directory
+          - EXPOSE 8000
+          - CMD uvicorn with proper args
+          - Non-root user for security
+          
+      - path: docker-compose.yml
+        requirements:
+          - Service definition for relay
+          - Env vars loaded from .env file
+          - Port mapping 8000:8000
+          - Restart policy
+          
+      - path: .dockerignore
+        requirements:
+          - Exclude .env, tests/, docs/
+          - Exclude __pycache__, .git
+          
+      - path: docs/08_DOCKER.md
+        requirements:
+          - Build command: docker build -t consilium-relay .
+          - Run command: docker compose up
+          - How to view logs
+          - How to stop container
+    
+    dependencies:
+      - phase: 4
+      - phase: 5
+      - phase: 6
+      - phase: 7
+    
+    validation:
+      - docker build succeeds without errors
+      - docker compose up starts relay
+      - Container responds to http://localhost:8000/health
+      - pytest runs successfully inside container
+      - Container uses <500MB memory
+    
+    copilot_instructions: |
+      Use multi-stage build if beneficial. Install only production
+      dependencies in final image. Run as non-root user. Use
+      .dockerignore to keep image small. Validate container works
+      before proceeding to Phase 9.
+
+  - phase: 9
+    name: Deployment & MVP Validation
+    purpose: Deploy to cloud and prove end-to-end functionality
+    type: deployment
+    copilot_can_automate: partial
+    
+    deliverables:
+      - description: Relay deployed to Railway/Fly.io/Render
+      - description: Public URL accessible
+      
+      - path: ~/.config/claude/mcp_servers.json (Chairman's machine)
+        content:
+          - MCP server config pointing to deployed relay
+          - API key for authentication
+          
+      - description: Custom GPT created in ChatGPT
+        content:
+          - OpenAPI schema imported from Phase 1
+          - Authentication configured
+          - Instructions for posting to Consilium
+          
+      - description: First Discord thread created
+      - description: Chairman posts message via Discord UI
+      - description: Claude posts message via MCP
+      - description: ChatGPT posts message via Custom GPT
+      - description: All three can read each other's messages
+      
+      - path: docs/09_MVP_SESSION.md
+        content:
+          - ADR documenting first successful session
+          - Timestamp of session
+          - Participants and their methods
+          - Any issues encountered
+          - Lessons learned
+          
+      - description: Decision Minute pinned in Discord thread
+    
+    dependencies:
+      - phase: 8
+    
+    validation:
+      - Deployed relay responds to health checks
+      - Claude successfully posts via MCP (verify in Discord)
+      - ChatGPT successfully posts via Custom GPT (verify in Discord)
+      - Chairman can read all messages in Discord thread
+      - Relay logs show all three clients authenticated
+      - No errors in relay logs during session
+    
+    copilot_instructions: |
+      Deployment is partially manual. Copilot can generate deployment
+      configs but Chairman must execute deployment and verify.
+      Focus on generating clear deployment documentation and MCP
+      config templates.
+
+dependency_graph:
+  phase_0: []
+  phase_1: [phase_0]
+  phase_2: [phase_1]
+  phase_3: [phase_2]
+  phase_4: [phase_2, phase_3]
+  phase_5: [phase_4, phase_1]
+  phase_6: [phase_5, phase_3]
+  phase_7: [phase_5, phase_6]
+  phase_8: [phase_4, phase_5, phase_6, phase_7]
+  phase_9: [phase_8]
+
+notes:
+  - Phase 3 and 9 require manual Chairman intervention
+  - Phases 4-8 are fully Copilot-automatable if properly specified
+  - Testing can begin during Phase 5 but completes in Phase 7
+  - Phase 5 endpoints must be designed for easy mock-to-real transition
+  - All phases reference OpenAPI schema from Phase 1 as source of truth
