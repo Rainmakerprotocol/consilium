@@ -23,9 +23,9 @@ update_protocol: "tense_management"
 cross_doc_relationship:
   consumes:
     - "./phase_04_BLUEPRINT.yaml"
-  - "./00_COPILOT_INSTRUCTIONS.yml"
-  - "./00_AI_AGENT_RULES.yml"
-  - "../../consilium-openapi-v1.1.yaml"
+    - "./00_COPILOT_INSTRUCTIONS.yml"
+    - "./00_AI_AGENT_RULES.yml"
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_03_ARCHITECTURE.yaml"
   produces:
     - "./phase_04_IMPLEMENTATION.yaml"
@@ -250,7 +250,7 @@ system_architecture:
         - "DISCORD_BOT_TOKEN: min_length=50"
         - "DISCORD_GUILD_ID: regex=^\\d{18,20}$"
         - "DISCORD_CHANNEL_ID: regex=^\\d{18,20}$"
-  - "CONSILIUM_API_KEY: min_length=32"
+        - "CONSILIUM_API_KEY: min_length=32"
         - "LOG_LEVEL: Literal['DEBUG','INFO','WARNING','ERROR','CRITICAL']"
       interface_example: |
         from functools import lru_cache
@@ -778,7 +778,7 @@ acceptance_criteria:
     - "Testing strategy defined for unit and integration tests"
     - "Performance targets specified and achievable"
     - "No TBD/TODO markers remain"
-    - "TECHNICAL_DECISIONS.md updated"
+      - "TECHNICAL_DECISIONS.yml updated"
     - "Converted to past tense with status=COMPLETE"
 
 contract:
@@ -787,9 +787,10 @@ contract:
     configuration loader (Pydantic BaseSettings), and structured logging. Expose
     /v1/system/health and /v1/system/info per the canonical API.
   inputs:
-    - "../00_parent/00_COPILOT_README.md"
-    - "../consilium-9_phase_plan.yml"
-    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./00_COPILOT_INSTRUCTIONS.yml"
+    - "./00_AI_AGENT_RULES.yml"
+    - "../../consilium-9_phase_plan.yml"
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_01_BLUEPRINT.yaml"
     - "./phase_01_ARCHITECTURE.yaml"
     - "./phase_01_IMPLEMENTATION.yaml"
