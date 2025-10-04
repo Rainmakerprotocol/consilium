@@ -8,16 +8,16 @@ api_version: "v1.1"
 status: "DRAFT"
 created_utc: "2025-10-04T17:05:00Z"
 last_updated_utc: "2025-10-04T17:05:00Z"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
 audience: [copilot, ai_agents, human_developers]
 update_protocol: "tense_management"
 cross_doc_relationship:
-  consumes: ["./phase_01_BLUEPRINT.yaml", "./phase_01_ARCHITECTURE.yaml", "../00_parent/00_COPILOT_README.md"]
+  consumes: ["./phase_01_BLUEPRINT.yaml", "./phase_01_ARCHITECTURE.yaml", "./00_COPILOT_INSTRUCTIONS.yml"]
   produces: ["../01_spec/01_SYSTEM_SPEC.yaml", "../01_spec/02_OPENAPI_SCHEMA.yaml", "../01_spec/03_DATA_MODELS.md"]
   updates: ["../PHASE_NOTES.md", "../TECHNICAL_DECISIONS.md"]
 ---
@@ -80,8 +80,8 @@ sections:
   contract:
     purpose: "Define and freeze Consilium Relay system specification and API contracts for Phase 1, enabling later phases to implement endpoints and Discord integration without ambiguity."
     inputs:
-      - "../00_parent/00_COPILOT_README.md"
-      - "../consilium-9_phase_plan.yml"
+      - "./00_COPILOT_INSTRUCTIONS.yml"
+      - "../../consilium-9_phase_plan.yml"
       - "../consilium_manifesto.md"
     outputs:
       - "../01_spec/01_SYSTEM_SPEC.yaml"

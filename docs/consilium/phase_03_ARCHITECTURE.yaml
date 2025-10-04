@@ -9,10 +9,10 @@ status: "DRAFT"
 created_utc: "2025-10-04T20:30:00Z"
 last_updated_utc: "2025-10-04T20:30:00Z"
 blueprint_path: "./phase_03_BLUEPRINT.yaml"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
@@ -23,14 +23,14 @@ update_protocol: "tense_management"
 cross_doc_relationship:
   consumes:
     - "./phase_03_BLUEPRINT.yaml"
-    - "../00_parent/00_COPILOT_README.md"
-    - "../consilium-9_phase_plan.yml"
+    - "./00_COPILOT_INSTRUCTIONS.yml"
+    - "../../consilium-9_phase_plan.yml"
     - "./phase_02_ARCHITECTURE.yaml"
   produces:
     - "./phase_03_IMPLEMENTATION.yaml"
   updates:
-    - "../TECHNICAL_DECISIONS.md"
-    - "../PHASE_NOTES.md"
+  - "./TECHNICAL_DECISIONS.yml"
+  - "./PHASE_NOTES.txt"
 
 ---
 
@@ -603,7 +603,7 @@ contract:
       assert token and len(token) >= 50, "DISCORD_BOT_TOKEN invalid (len)"
       assert guild and re.fullmatch(r"\d{18,20}", guild), "DISCORD_GUILD_ID invalid"
       assert channel and re.fullmatch(r"\d{18,20}", channel), "DISCORD_CHANNEL_ID invalid"
-      assert api and len(api) >= 16, "CONSILIUM_API_KEY invalid (len)"
+  assert api and len(api) >= 32, "CONSILIUM_API_KEY invalid (len)"
       assert (log or "INFO") in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}, "LOG_LEVEL invalid"
       # 2) Setup doc has checklist marks
       docp = pathlib.Path("docs/04_DISCORD_SETUP.md")
@@ -641,9 +641,9 @@ rollback_procedure:
 
 links_and_references:
   phase_documents:
-    blueprint: "./phase_03_BLUEPRINT.yaml"
-    implementation: "./phase_03_IMPLEMENTATION.yaml"
-    phase_plan: "../consilium-9_phase_plan.yml"
+  blueprint: "./phase_03_BLUEPRINT.yaml"
+  implementation: "./phase_03_IMPLEMENTATION.yaml"
+  phase_plan: "../../consilium-9_phase_plan.yml"
   
   external_documentation:
     discord_developer_portal: "https://discord.com/developers/docs"

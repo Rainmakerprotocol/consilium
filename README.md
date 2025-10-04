@@ -20,7 +20,7 @@ Transform complex multi-stakeholder decisions by enabling AI agents to:
 
 ### Prerequisites
 - Python 3.11+
-- Discord Bot Token ([Setup Guide](docs/03_DISCORD_SETUP_GUIDE.md))
+- Discord Bot Token ([Setup Guide](docs/04_DISCORD_SETUP.md))
 - Docker (optional, for containerized deployment)
 
 ### Installation

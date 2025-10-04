@@ -1,0 +1,139 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_04_blueprint"
+doc_title: "Phase 4 — Core Framework — Blueprint"
+phase_id: "phase_04"
+api_version: "v1.1"                     # aligns with OpenAPI spec
+status: "DRAFT"
+created_utc: "2025-10-04T19:00:00Z"
+last_updated_utc: "2025-10-04T19:00:00Z"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./00_COPILOT_INSTRUCTIONS.yml"
+    - "../../consilium-9_phase_plan.yml"
+    - "../../consilium-openapi-v1.1.yaml"
+    - "./phase_01_BLUEPRINT.yaml"
+    - "./phase_01_ARCHITECTURE.yaml"
+    - "./phase_01_IMPLEMENTATION.yaml"
+    - "./phase_02_BLUEPRINT.yaml"
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "./phase_02_IMPLEMENTATION.yaml"
+    - "./phase_03_BLUEPRINT.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "./phase_03_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 4 exists and WHAT must be delivered to stand up
+     the executable FastAPI foundation.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phases 1–3 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 4 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable.
+  6. Non-goals: No Strategy endpoints (/v1/strategy/*) here; those land in Phase 5.
+
+sections:
+
+  summary: >
+    Phase 4 will create the executable FastAPI application skeleton with
+    structured JSON logging and a typed configuration loader. It will expose
+    the System endpoints defined by the OpenAPI spec — /v1/system/health and
+    /v1/system/info — and wire essential middleware (CORS, request-id).
+    The app must fail fast when required environment variables are missing.
+    This phase does not implement Strategy endpoints (/v1/strategy/*).
+
+  contract:
+    purpose: >
+      Build a minimal, production-ready core framework: FastAPI app entrypoint,
+      configuration loader (Pydantic BaseSettings), and structured logging. Expose
+      /v1/system/health and /v1/system/info per the canonical API.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_01_BLUEPRINT.yaml"
+      - "./phase_01_ARCHITECTURE.yaml"
+      - "./phase_01_IMPLEMENTATION.yaml"
+      - "./phase_02_BLUEPRINT.yaml"
+      - "./phase_02_ARCHITECTURE.yaml"
+      - "./phase_02_IMPLEMENTATION.yaml"
+      - "./phase_03_BLUEPRINT.yaml"
+      - "./phase_03_ARCHITECTURE.yaml"
+      - "./phase_03_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/main.py"
+      - "src/core/config.py"
+      - "src/core/logging.py"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import importlib, sys
+        # 1) App importable and exposes FastAPI instance 'app'
+        try:
+            m = importlib.import_module("src.main")
+            app = getattr(m, "app", None)
+            assert app is not None, "src.main.app missing"
+        except Exception as e:
+            print("Import failure:", e); sys.exit(1)
+
+        # 2) OpenAPI System routes present (paths only; no network)
+        paths = {getattr(r, 'path', None) for r in app.routes}
+        expected = {"/v1/system/health", "/v1/system/info"}
+        missing = sorted(list(expected - paths))
+        if missing:
+            print("Missing routes:", missing); sys.exit(1)
+
+        print("Phase 4 CI preflight passed.")
+        PY
+      expected: "Import succeeds and both System routes are mounted."
+    rollback: "git checkout -- src/main.py src/core/config.py src/core/logging.py"
+
+  deliverables:
+    - "src/main.py — FastAPI app initialization, CORS middleware, request-id middleware, startup/shutdown hooks."
+    - "src/core/config.py — Pydantic BaseSettings, typed fields; fail-fast on missing required env vars."
+    - "src/core/logging.py — Structured JSON logger; request-id propagation; level from LOG_LEVEL env var."
+    - "System endpoints mounted: GET /v1/system/health, GET /v1/system/info (as per spec)."
+
+  success_criteria:
+    - "Importing src.main exposes 'app' (FastAPI)."
+    - "GET /v1/system/health returns 200 with status in {'ok','starting','degraded'}."
+    - "GET /v1/system/info returns 200 with version string."
+    - "Logs are JSON-structured and include request-id."
+    - "Missing required env vars causes startup failure with a clear error."
+    - "No Strategy endpoints are included in this phase."
+
+  risks_and_mitigations:
+    - "Spec drift (paths mismatch) → Treat canonical OpenAPI as authority; unit-check route paths."
+    - "Blocking operations in startup → Keep startup hooks lightweight; avoid I/O in Phase 4."
+    - "Log noise or PII in logs → Log structure only (level, message, request-id, ts); never log secrets."
+    - "CORS misconfiguration → Start with restrictive allowlist; expand intentionally per environment."
+
+  rollback_procedure:
+    - "Revert changed files: git checkout -- src/main.py src/core/config.py src/core/logging.py"
+    - "If rollback crosses commits, reset branch to last passing commit."
+
+  cross_doc_links:
+    architecture: "./phase_04_ARCHITECTURE.yaml"
+    implementation: "./phase_04_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0004-core-framework-and-logging.md"

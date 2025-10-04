@@ -8,10 +8,10 @@ api_version: "v1.1"
 status: "DRAFT"
 created_utc: "2025-10-04T19:45:00Z"
 last_updated_utc: "2025-10-04T19:45:00Z"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"

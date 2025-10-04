@@ -8,10 +8,10 @@ api_version: "v1.1"
 status: "DRAFT"
 created_utc: "2025-10-04T20:45:00Z"
 last_updated_utc: "2025-10-04T20:45:00Z"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
@@ -23,7 +23,7 @@ cross_doc_relationship:
   consumes:
     - "./phase_03_BLUEPRINT.yaml"
     - "./phase_03_ARCHITECTURE.yaml"
-    - "../00_parent/00_COPILOT_README.md"
+    - "./00_COPILOT_INSTRUCTIONS.yml"
   produces:
     - ".env"
     - "docs/04_DISCORD_SETUP.md"
@@ -156,7 +156,7 @@ sections:
         assert token and len(token) >= 50, "DISCORD_BOT_TOKEN invalid (len)"
         assert guild and re.fullmatch(r"\d{18,20}", guild), "DISCORD_GUILD_ID invalid"
         assert channel and re.fullmatch(r"\d{18,20}", channel), "DISCORD_CHANNEL_ID invalid"
-        assert api and len(api) >= 16, "CONSILIUM_API_KEY invalid (len)"
+  assert api and len(api) >= 32, "CONSILIUM_API_KEY invalid (len)"
         assert (log or "INFO") in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}, "LOG_LEVEL invalid"
         # 2) Setup doc has checklist marks
         docp = pathlib.Path("docs/04_DISCORD_SETUP.md")

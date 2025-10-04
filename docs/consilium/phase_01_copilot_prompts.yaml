@@ -2,6 +2,7 @@
 doc_type: COPILOT_PROMPTS
 template_version: 1.1.0
 prompts_id: "phase_01_copilot_prompts"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 doc_title: "Phase 1 — Copilot Automation Prompts"
 phase_id: "phase_01"
 created_utc: "2025-10-04T16:30:00Z"

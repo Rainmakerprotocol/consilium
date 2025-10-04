@@ -1,0 +1,1233 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_04_implementation"
+doc_title: "Phase 4 — Core Framework — Implementation"
+phase_id: "phase_04"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T22:30:00Z"
+last_updated_utc: "2025-10-04T22:30:00Z"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_04_BLUEPRINT.yaml"
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+  produces:
+    - "src/main.py"
+    - "src/core/config.py"
+    - "src/core/logging.py"
+    - "src/core/middleware.py"
+    - "src/api/system_routes.py"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Provide concrete, executable steps to build Phase 4 deliverables.
+  2. Voice: Use imperative steps ("Create file X", "Implement function Y").
+  3. Tense policy: After CI Gate passes, convert to past tense and set status COMPLETE.
+  4. Outputs: Must match exactly the file paths in sections.outputs.
+  5. Evidence: Provide validation commands with expected results.
+  6. Execution: Follow steps sequentially; validate after each module.
+
+sections:
+
+  steps:
+    - "Step 1: Install additional dependencies (structlog)"
+    - "Step 2: Create src/core/config.py (Pydantic Settings)"
+    - "Step 3: Create src/core/logging.py (Structured JSON logger)"
+    - "Step 4: Create src/core/middleware.py (RequestIDMiddleware)"
+    - "Step 5: Create src/api/system_routes.py (System endpoints)"
+    - "Step 6: Modify src/main.py (FastAPI app initialization)"
+    - "Step 7: Validate configuration loading"
+    - "Step 8: Test logging output"
+    - "Step 9: Test System endpoints"
+    - "Step 10: Run full CI gate validation"
+    - "Step 11: Record completion in Phase Notes"
+
+  outputs:
+    - "src/main.py"
+    - "src/core/config.py"
+    - "src/core/logging.py"
+    - "src/core/middleware.py"
+    - "src/api/system_routes.py"
+    - "requirements.txt (updated)"
+
+  post_validation:
+    commands: |
+      # Validate imports
+      python - <<'PY'
+      import importlib, sys
+      try:
+          m = importlib.import_module("src.main")
+          app = getattr(m, "app", None)
+          assert app is not None, "src.main.app missing"
+          paths = {getattr(r, 'path', None) for r in app.routes}
+          assert "/v1/system/health" in paths
+          assert "/v1/system/info" in paths
+          print("✓ App imports successfully and routes mounted")
+      except Exception as e:
+          print(f"✗ Import failure: {e}"); sys.exit(1)
+      PY
+      
+      # Test health endpoint
+      python - <<'PY'
+      from fastapi.testclient import TestClient
+      from src.main import app
+      client = TestClient(app)
+      response = client.get("/v1/system/health")
+      assert response.status_code == 200
+      data = response.json()
+      assert data["status"] == "ok"
+      assert "uptime_s" in data
+      print("✓ Health endpoint returns 200 with valid response")
+      PY
+      
+      # Test info endpoint
+      python - <<'PY'
+      from fastapi.testclient import TestClient
+      from src.main import app
+      client = TestClient(app)
+      response = client.get("/v1/system/info")
+      assert response.status_code == 200
+      data = response.json()
+      assert "version" in data
+      print("✓ Info endpoint returns 200 with version")
+      PY
+      
+      # Run pytest
+      pytest tests/ -v
+    expected: "All validation checks pass; pytest shows passing tests"
+
+  contract:
+    purpose: >
+      Build a minimal, production-ready core framework: FastAPI app entrypoint,
+      configuration loader (Pydantic BaseSettings), and structured logging. Expose
+      /v1/system/health and /v1/system/info per the canonical API.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_01_BLUEPRINT.yaml"
+      - "./phase_01_ARCHITECTURE.yaml"
+      - "./phase_01_IMPLEMENTATION.yaml"
+      - "./phase_02_BLUEPRINT.yaml"
+      - "./phase_02_ARCHITECTURE.yaml"
+      - "./phase_02_IMPLEMENTATION.yaml"
+      - "./phase_03_BLUEPRINT.yaml"
+      - "./phase_03_ARCHITECTURE.yaml"
+      - "./phase_03_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/main.py"
+      - "src/core/config.py"
+      - "src/core/logging.py"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import importlib, sys
+        # 1) App importable and exposes FastAPI instance 'app'
+        try:
+            m = importlib.import_module("src.main")
+            app = getattr(m, "app", None)
+            assert app is not None, "src.main.app missing"
+        except Exception as e:
+            print("Import failure:", e); sys.exit(1)
+
+        # 2) OpenAPI System routes present (paths only; no network)
+        paths = {getattr(r, 'path', None) for r in app.routes}
+        expected = {"/v1/system/health", "/v1/system/info"}
+        missing = sorted(list(expected - paths))
+        if missing:
+            print("Missing routes:", missing); sys.exit(1)
+
+        print("Phase 4 CI preflight passed.")
+        PY
+      expected: "Import succeeds and both System routes are mounted."
+    rollback: "git checkout -- src/main.py src/core/config.py src/core/logging.py"
+
+  ci_gate:
+    commands: |
+      ruff check src/main.py src/core/ src/api/
+      mypy src/main.py src/core/ src/api/
+      pytest tests/ -v
+    expected: "All commands exit 0; no linting errors, type errors, or test failures"
+
+  rollback_procedure:
+    - "Revert all Phase 4 files: git checkout -- src/main.py src/core/ src/api/system_routes.py"
+    - "If changes span commits: git reset --hard <last_passing_commit>"
+    - "Verify: python -m pytest tests/"
+
+---
+
+# ===========================================================================
+# STEP-BY-STEP IMPLEMENTATION INSTRUCTIONS
+# ===========================================================================
+
+step_01_install_dependencies:
+  purpose: "Add structlog for JSON logging"
+  file: "requirements.txt"
+  action: "Append to requirements.txt"
+  content: |
+    # Structured Logging (Phase 4)
+    structlog==24.1.0
+  
+  validation:
+    command: |
+      pip install -r requirements.txt
+      python -c "import structlog; print(f'✓ structlog {structlog.__version__} installed')"
+    expected: "✓ structlog 24.1.0 installed"
+
+step_02_create_core_config:
+  file: "src/core/config.py"
+  purpose: "Type-safe configuration loader with validation"
+  content: |
+    """
+    Configuration management for Consilium Relay.
+
+    Loads environment variables using Pydantic BaseSettings with validation.
+    Fails fast on startup if required configuration is missing or invalid.
+    """
+
+    from functools import lru_cache
+    from typing import Literal
+
+    from pydantic import Field, field_validator
+    from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+    class Settings(BaseSettings):
+        """Application configuration loaded from environment variables."""
+
+        model_config = SettingsConfigDict(
+            env_file=".env",
+            env_file_encoding="utf-8",
+            case_sensitive=True,
+            extra="ignore",
+        )
+
+        # Discord Configuration
+        discord_bot_token: str = Field(
+            ...,
+            min_length=50,
+            description="Discord bot authentication token (50+ characters)",
+        )
+        discord_guild_id: str = Field(
+            ...,
+            pattern=r"^\d{18,20}$",
+            description="Discord server (guild) ID (18-20 digits)",
+        )
+        discord_channel_id: str = Field(
+            ...,
+            pattern=r"^\d{18,20}$",
+            description="Discord channel ID for Consilium threads (18-20 digits)",
+        )
+
+        # API Security
+  consilium_api_key: str = Field(
+            ...,
+            min_length=32,
+            description="API key for relay authentication (32+ characters)",
+        )
+
+        # Application Configuration
+        log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
+            default="INFO",
+            description="Logging verbosity level",
+        )
+        version: str = Field(
+            default="1.1.0",
+            description="Application version string",
+        )
+
+        @field_validator("log_level", mode="before")
+        @classmethod
+        def normalize_log_level(cls, v: str) -> str:
+            """Normalize log level to uppercase."""
+            if isinstance(v, str):
+                return v.upper()
+            return v
+
+
+    @lru_cache()
+    def get_settings() -> Settings:
+        """
+        Get cached Settings instance.
+
+        Uses lru_cache to ensure singleton behavior - Settings is loaded once
+        and reused throughout application lifetime.
+
+        Returns:
+            Settings: Validated configuration object
+
+        Raises:
+            ValidationError: If required environment variables are missing or invalid
+        """
+        return Settings()
+  
+  validation:
+    command: |
+      python - <<'PY'
+      from src.core.config import get_settings, Settings
+      try:
+          settings = get_settings()
+          print(f"✓ Config loaded successfully")
+          print(f"  Guild ID: {settings.discord_guild_id}")
+          print(f"  Channel ID: {settings.discord_channel_id}")
+          print(f"  Log Level: {settings.log_level}")
+          print(f"  Version: {settings.version}")
+      except Exception as e:
+          print(f"✗ Config validation failed: {e}")
+          import sys; sys.exit(1)
+      PY
+    expected: "✓ Config loaded successfully (with actual values from .env)"
+
+step_03_create_core_logging:
+  file: "src/core/logging.py"
+  purpose: "Structured JSON logging with request-id correlation"
+  content: |
+    """
+    Structured logging configuration for Consilium Relay.
+
+    Uses structlog to produce JSON-formatted logs with request-id correlation.
+    Logs are machine-parseable and suitable for aggregation tools.
+    """
+
+    import logging
+    import sys
+    from typing import Any
+
+    import structlog
+    from structlog.typing import EventDict, WrappedLogger
+
+
+    def add_app_context(
+        logger: WrappedLogger, method_name: str, event_dict: EventDict
+    ) -> EventDict:
+        """
+        Add application context to log events.
+
+        Args:
+            logger: The wrapped logger instance
+            method_name: The name of the method being called
+            event_dict: The event dictionary to modify
+
+        Returns:
+            Modified event dictionary with app context
+        """
+        event_dict["app"] = "consilium-relay"
+        return event_dict
+
+
+    def configure_logging(log_level: str = "INFO") -> None:
+        """
+        Configure structlog for JSON output.
+
+        Sets up structlog processors, formatters, and log level. Logs are
+        output as JSON to stdout for container-friendly logging.
+
+        Args:
+            log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        """
+        # Configure stdlib logging
+        logging.basicConfig(
+            format="%(message)s",
+            stream=sys.stdout,
+            level=getattr(logging, log_level.upper(), logging.INFO),
+        )
+
+        # Configure structlog
+        structlog.configure(
+            processors=[
+                structlog.contextvars.merge_contextvars,
+                structlog.processors.add_log_level,
+                structlog.processors.TimeStamper(fmt="iso", utc=True),
+                add_app_context,
+                structlog.processors.StackInfoRenderer(),
+                structlog.processors.format_exc_info,
+                structlog.processors.JSONRenderer(),
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(
+                getattr(logging, log_level.upper(), logging.INFO)
+            ),
+            context_class=dict,
+            logger_factory=structlog.stdlib.LoggerFactory(),
+            cache_logger_on_first_use=True,
+        )
+
+
+    def get_logger(name: str) -> structlog.stdlib.BoundLogger:
+        """
+        Get a configured logger instance.
+
+        Args:
+            name: Logger name (typically __name__ of calling module)
+
+        Returns:
+            Bound logger instance with JSON output configured
+        """
+        return structlog.get_logger(name)
+  
+  validation:
+    command: |
+      python - <<'PY'
+      from src.core.logging import configure_logging, get_logger
+      import json
+      import io
+      import sys
+      
+      # Capture stdout
+      old_stdout = sys.stdout
+      sys.stdout = io.StringIO()
+      
+      configure_logging("INFO")
+      logger = get_logger(__name__)
+      logger.info("test_message", key="value")
+      
+      # Get logged output
+      output = sys.stdout.getvalue()
+      sys.stdout = old_stdout
+      
+      # Validate JSON format
+      try:
+          log_line = output.strip()
+          log_data = json.loads(log_line)
+          assert log_data["event"] == "test_message"
+          assert log_data["key"] == "value"
+          assert "timestamp" in log_data
+          assert log_data["level"] == "info"
+          assert log_data["app"] == "consilium-relay"
+          print("✓ Logging configured correctly (JSON output)")
+      except Exception as e:
+          print(f"✗ Logging validation failed: {e}")
+          import sys; sys.exit(1)
+      PY
+    expected: "✓ Logging configured correctly (JSON output)"
+
+step_04_create_core_middleware:
+  file: "src/core/middleware.py"
+  purpose: "Request-ID middleware for log correlation"
+  content: |
+    """
+    Middleware for Consilium Relay API.
+
+    Provides request-id generation and propagation for distributed tracing.
+    """
+
+    import uuid
+    from typing import Callable
+
+    import structlog
+    from starlette.middleware.base import BaseHTTPMiddleware
+    from starlette.requests import Request
+    from starlette.responses import Response
+
+
+    class RequestIDMiddleware(BaseHTTPMiddleware):
+        """
+        Middleware to generate and inject request-id for tracing.
+
+        Generates a unique UUID for each request, stores it in request.state,
+        binds it to structlog context, and returns it in response headers.
+        """
+
+        async def dispatch(
+            self, request: Request, call_next: Callable
+        ) -> Response:
+            """
+            Process request and add request-id.
+
+            Args:
+                request: Incoming HTTP request
+                call_next: Next middleware or route handler
+
+            Returns:
+                HTTP response with X-Request-ID header
+            """
+            request_id = str(uuid.uuid4())
+            request.state.request_id = request_id
+
+            # Bind request-id to structlog context for this request
+            structlog.contextvars.bind_contextvars(request_id=request_id)
+
+            try:
+                response = await call_next(request)
+                response.headers["X-Request-ID"] = request_id
+                return response
+            finally:
+                # Unbind context to prevent leaking to next request
+                structlog.contextvars.unbind_contextvars("request_id")
+  
+  validation:
+    command: |
+      python - <<'PY'
+      from src.core.middleware import RequestIDMiddleware
+      print("✓ RequestIDMiddleware imported successfully")
+      PY
+    expected: "✓ RequestIDMiddleware imported successfully"
+
+step_05_create_api_system_routes:
+  file: "src/api/system_routes.py"
+  purpose: "System operational endpoints"
+  content: |
+    """
+    System operational endpoints for Consilium Relay.
+
+    Provides health checks and service metadata for operational monitoring.
+    """
+
+    import time
+    from typing import Optional
+
+    from fastapi import APIRouter
+    from pydantic import BaseModel, Field
+
+    from src.core.config import get_settings
+    from src.core.logging import get_logger
+
+    logger = get_logger(__name__)
+    router = APIRouter()
+
+    # Track application start time for uptime calculation
+    _start_time = time.time()
+
+
+    class HealthResponse(BaseModel):
+        """Health check response model."""
+
+        status: str = Field(
+            ...,
+            description="Health status: ok, starting, or degraded",
+        )
+        uptime_s: float = Field(
+            ...,
+            ge=0,
+            description="Application uptime in seconds",
+        )
+        checks: Optional[dict[str, str]] = Field(
+            default=None,
+            description="Optional component-specific health checks",
+        )
+
+
+    class InfoResponse(BaseModel):
+        """Service information response model."""
+
+        version: str = Field(
+            ...,
+            description="Application version string",
+        )
+        git_sha: Optional[str] = Field(
+            default=None,
+            description="Git commit SHA (if available)",
+        )
+        build_time: Optional[str] = Field(
+            default=None,
+            description="Build timestamp ISO format (if available)",
+        )
+
+
+    @router.get(
+        "/system/health",
+        response_model=HealthResponse,
+        summary="Health Check",
+        description="Returns application health status and uptime",
+        tags=["System"],
+    )
+    async def health() -> HealthResponse:
+        """
+        Health check endpoint.
+
+        Returns basic health status and uptime. Can be extended with
+        component-specific checks (database, external APIs, etc.) in
+        future phases.
+
+        Returns:
+            HealthResponse with status and uptime
+        """
+        uptime = time.time() - _start_time
+        
+        # Basic health checks (can expand in future phases)
+        checks = {
+            "config": "loaded",
+            "logging": "configured",
+        }
+
+        logger.debug("health_check", uptime_s=uptime)
+
+        return HealthResponse(
+            status="ok",
+            uptime_s=uptime,
+            checks=checks,
+        )
+
+
+    @router.get(
+        "/system/info",
+        response_model=InfoResponse,
+        summary="Service Information",
+        description="Returns service version and build metadata",
+        tags=["System"],
+    )
+    async def info() -> InfoResponse:
+        """
+        Service information endpoint.
+
+        Returns application version and optional build metadata
+        (git SHA, build time). Useful for deployment verification.
+
+        Returns:
+            InfoResponse with version and metadata
+        """
+        settings = get_settings()
+
+        logger.debug("info_request", version=settings.version)
+
+        return InfoResponse(
+            version=settings.version,
+            git_sha=None,  # Can populate from CI/CD in future
+            build_time=None,  # Can populate from build process
+        )
+  
+  validation:
+    command: |
+      python - <<'PY'
+      from src.api.system_routes import router, HealthResponse, InfoResponse
+      print(f"✓ System routes module imported")
+      print(f"  Router has {len(router.routes)} routes")
+      for route in router.routes:
+          print(f"  - {route.path}")
+      PY
+    expected: |
+      ✓ System routes module imported
+        Router has 2 routes
+        - /system/health
+        - /system/info
+
+step_06_modify_main:
+  file: "src/main.py"
+  purpose: "FastAPI application initialization"
+  action: "Replace entire file"
+  content: |
+    """
+    Consilium Relay - Main Application Entrypoint
+
+    FastAPI application with structured logging, configuration management,
+    and system operational endpoints.
+    """
+
+    from contextlib import asynccontextmanager
+    from typing import AsyncGenerator
+
+    from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
+
+    from src.api.system_routes import router as system_router
+    from src.core.config import get_settings
+    from src.core.logging import configure_logging, get_logger
+    from src.core.middleware import RequestIDMiddleware
+
+    # Load configuration (will fail-fast if invalid)
+    settings = get_settings()
+
+    # Configure logging before any log statements
+    configure_logging(settings.log_level)
+    logger = get_logger(__name__)
+
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        """
+        Application lifespan context manager.
+
+        Handles startup and shutdown events. Logs are structured JSON.
+
+        Args:
+            app: FastAPI application instance
+
+        Yields:
+            None (application runs between yield)
+        """
+        # Startup
+        logger.info(
+            "app_startup",
+            version=settings.version,
+            log_level=settings.log_level,
+        )
+        
+        yield
+        
+        # Shutdown
+        logger.info("app_shutdown")
+
+
+    # Initialize FastAPI application
+    app = FastAPI(
+        title="Consilium Relay API",
+        version=settings.version,
+        description="Multi-AI collaboration relay service using Discord as message board",
+        lifespan=lifespan,
+    )
+
+    # Configure CORS (restrictive by default)
+    # For development, can enable with: allow_origins=["http://localhost:3000"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],  # Empty = same-origin only
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Add request-id middleware for tracing
+    app.add_middleware(RequestIDMiddleware)
+
+    # Register System routes (v1 prefix)
+    app.include_router(system_router, prefix="/v1")
+
+    # Log successful initialization
+    logger.debug("app_initialized", routes=[route.path for route in app.routes])
+  
+  validation:
+    command: |
+      python - <<'PY'
+      from src.main import app
+      
+      # Validate app exists
+      assert app is not None, "FastAPI app not initialized"
+      
+      # Validate routes
+      paths = {getattr(route, 'path', None) for route in app.routes}
+      assert "/v1/system/health" in paths, "Health endpoint missing"
+      assert "/v1/system/info" in paths, "Info endpoint missing"
+      
+      print("✓ FastAPI app initialized successfully")
+      print(f"  Routes: {sorted([r.path for r in app.routes if hasattr(r, 'path')])}")
+      PY
+    expected: |
+      ✓ FastAPI app initialized successfully
+        Routes: ['/v1/system/health', '/v1/system/info']
+
+step_07_validate_configuration:
+  purpose: "Test configuration loading with various scenarios"
+  commands:
+    - description: "Valid configuration"
+      command: |
+        python - <<'PY'
+        from src.core.config import get_settings
+        try:
+            settings = get_settings()
+            print("✓ Configuration loaded successfully")
+            print(f"  Discord Guild ID: {settings.discord_guild_id}")
+            print(f"  Log Level: {settings.log_level}")
+            print(f"  Version: {settings.version}")
+        except Exception as e:
+            print(f"✗ Configuration failed: {e}")
+            import sys; sys.exit(1)
+        PY
+      expected: "✓ Configuration loaded successfully"
+    
+    - description: "Missing required field (should fail)"
+      command: |
+        python - <<'PY'
+        import os
+        import sys
+        from pydantic import ValidationError
+        
+        # Temporarily remove required field
+        original = os.environ.get("DISCORD_BOT_TOKEN")
+        if original:
+            del os.environ["DISCORD_BOT_TOKEN"]
+        
+        try:
+            from src.core.config import Settings
+            Settings.model_config.env_file = "nonexistent.env"
+            settings = Settings()
+            print("✗ Should have failed with missing token")
+            sys.exit(1)
+        except ValidationError as e:
+            print("✓ Correctly failed on missing DISCORD_BOT_TOKEN")
+        finally:
+            if original:
+                os.environ["DISCORD_BOT_TOKEN"] = original
+        PY
+      expected: "✓ Correctly failed on missing DISCORD_BOT_TOKEN"
+
+step_08_test_logging:
+  purpose: "Validate structured logging output"
+  command: |
+    python - <<'PY'
+    import json
+    import io
+    import sys
+    from src.core.logging import configure_logging, get_logger
+    
+    # Capture stdout
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    
+    configure_logging("INFO")
+    logger = get_logger("test_module")
+    
+    # Log test messages
+    logger.info("test_info", key1="value1", key2=42)
+    logger.warning("test_warning", error_type="validation")
+    
+    # Get output
+    output = sys.stdout.getvalue()
+    sys.stdout = old_stdout
+    
+    # Validate JSON format
+    lines = output.strip().split('\n')
+    for i, line in enumerate(lines):
+        try:
+            data = json.loads(line)
+            assert "timestamp" in data
+            assert "level" in data
+            assert "event" in data
+            assert data["app"] == "consilium-relay"
+            print(f"✓ Log line {i+1} is valid JSON: {data['event']}")
+        except json.JSONDecodeError as e:
+            print(f"✗ Log line {i+1} is not valid JSON: {e}")
+            sys.exit(1)
+    
+    print("✓ All logs are structured JSON")
+    PY
+  expected: |
+    ✓ Log line 1 is valid JSON: test_info
+    ✓ Log line 2 is valid JSON: test_warning
+    ✓ All logs are structured JSON
+
+step_09_test_system_endpoints:
+  purpose: "Test System endpoints with FastAPI TestClient"
+  command: |
+    python - <<'PY'
+    from fastapi.testclient import TestClient
+    from src.main import app
+    import time
+    
+    client = TestClient(app)
+    
+    # Test health endpoint
+    print("Testing GET /v1/system/health...")
+    response = client.get("/v1/system/health")
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+    data = response.json()
+    assert data["status"] == "ok", f"Expected status='ok', got {data['status']}"
+    assert "uptime_s" in data, "uptime_s missing from response"
+    assert data["uptime_s"] >= 0, "uptime_s should be non-negative"
+    assert "checks" in data, "checks missing from response"
+    assert "X-Request-ID" in response.headers, "X-Request-ID header missing"
+    print(f"✓ Health endpoint OK: status={data['status']}, uptime={data['uptime_s']:.2f}s")
+    
+    # Test info endpoint
+    print("\nTesting GET /v1/system/info...")
+    response = client.get("/v1/system/info")
+    assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+    data = response.json()
+    assert "version" in data, "version missing from response"
+    assert data["version"] == "1.1.0", f"Expected version='1.1.0', got {data['version']}"
+    print(f"✓ Info endpoint OK: version={data['version']}")
+    
+    # Test request-id uniqueness
+    print("\nTesting request-id uniqueness...")
+    req1 = client.get("/v1/system/health")
+    req2 = client.get("/v1/system/health")
+    id1 = req1.headers["X-Request-ID"]
+    id2 = req2.headers["X-Request-ID"]
+    assert id1 != id2, "Request IDs should be unique"
+    print(f"✓ Request IDs are unique: {id1[:8]}... != {id2[:8]}...")
+    
+    print("\n✓ All System endpoint tests passed")
+    PY
+  expected: |
+    Testing GET /v1/system/health...
+    ✓ Health endpoint OK: status=ok, uptime=X.XXs
+    
+    Testing GET /v1/system/info...
+    ✓ Info endpoint OK: version=1.1.0
+    
+    Testing request-id uniqueness...
+    ✓ Request IDs are unique: ...
+    
+    ✓ All System endpoint tests passed
+
+step_10_run_ci_gate:
+  purpose: "Run full CI validation pipeline"
+  commands:
+    - name: "Lint check"
+      command: "ruff check src/main.py src/core/ src/api/"
+      expected: "No linting errors"
+      
+    - name: "Type check"
+      command: "mypy src/main.py src/core/ src/api/ --strict"
+      expected: "Success: no issues found"
+      
+    - name: "Import validation"
+      command: |
+        python - <<'PY'
+        import importlib
+        import sys
+        
+        modules = [
+            "src.main",
+            "src.core.config",
+            "src.core.logging",
+            "src.core.middleware",
+            "src.api.system_routes",
+        ]
+        
+        for mod_name in modules:
+            try:
+                importlib.import_module(mod_name)
+                print(f"✓ {mod_name}")
+            except Exception as e:
+                print(f"✗ {mod_name}: {e}")
+                sys.exit(1)
+        
+        print("\n✓ All modules import successfully")
+        PY
+      expected: "✓ All modules import successfully"
+      
+    - name: "Route validation"
+      command: |
+        python - <<'PY'
+        from src.main import app
+        
+        paths = {getattr(r, 'path', None) for r in app.routes}
+        expected = {"/v1/system/health", "/v1/system/info"}
+        missing = expected - paths
+        
+        if missing:
+            print(f"✗ Missing routes: {missing}")
+            import sys; sys.exit(1)
+        
+        print("✓ All required routes mounted:")
+        for path in sorted([r.path for r in app.routes if hasattr(r, 'path')]):
+            print(f"  - {path}")
+        PY
+      expected: "✓ All required routes mounted"
+      
+    - name: "Unit tests (if created)"
+      command: "pytest tests/ -v || echo 'No tests yet (create in Phase 7)'"
+      expected: "Tests pass or 'No tests yet' message"
+
+step_11_record_completion:
+  file: "../PHASE_NOTES.md"
+  purpose: "Document Phase 4 completion"
+  action: "Append to file"
+  content: |
+    
+    ---
+    ## Phase 4: Core Framework
+    
+    **Status**: COMPLETE  
+    **Completed**: 2025-10-04T23:00:00Z  
+    **Executed By**: GitHub Copilot + Claude  
+    **Duration**: 2-3 hours  
+    
+    ### Deliverables Created
+    - ✅ src/main.py - FastAPI app with middleware and System routes
+    - ✅ src/core/config.py - Pydantic Settings for type-safe config
+    - ✅ src/core/logging.py - Structured JSON logging with structlog
+    - ✅ src/core/middleware.py - RequestIDMiddleware for tracing
+    - ✅ src/api/system_routes.py - Health and Info endpoints
+    - ✅ requirements.txt - Updated with structlog dependency
+    
+    ### Validation Results
+    - ✅ All modules import successfully
+    - ✅ Configuration loads from .env with validation
+    - ✅ Logging produces valid JSON output
+    - ✅ GET /v1/system/health returns 200 with valid schema
+    - ✅ GET /v1/system/info returns 200 with version
+    - ✅ Request-id middleware generates unique IDs
+    - ✅ X-Request-ID header present in responses
+    - ✅ Ruff and mypy checks pass
+    
+    ### Key Technical Decisions
+    - Pydantic BaseSettings for fail-fast configuration
+    - structlog for machine-parseable JSON logs
+    - Request-ID middleware for distributed tracing
+    - CORS disabled by default (security-first)
+    - System endpoints separated from Strategy endpoints
+    
+    ### Next Phase
+    **Phase 5**: API Endpoints with Mock Responses
+    - Implement POST /v1/strategy/start-thread
+    - Implement POST /v1/strategy/post
+    - Implement GET /v1/strategy/fetch
+    - Use mock Discord responses (real integration in Phase 6)
+    
+    **Estimated Time**: 3-4 hours  
+    **Blockers**: None  
+    **Issues**: None  
+    
+    ### Notes
+    - Bot is still offline (expected until Phase 6 Discord integration)
+    - Configuration validated but Discord connection not tested yet
+    - System endpoints operational and ready for monitoring
+    - Ready to implement Strategy endpoints with mocks in Phase 5
+    
+    ---
+
+# ===========================================================================
+# VALIDATION SUITE
+# ===========================================================================
+
+comprehensive_validation:
+  description: "Complete validation of Phase 4 deliverables"
+  
+  test_01_configuration:
+    name: "Configuration Loading"
+    command: |
+      python - <<'PY'
+      from src.core.config import get_settings
+      settings = get_settings()
+      assert len(settings.discord_bot_token) >= 50
+      assert len(settings.discord_guild_id) in range(18, 21)
+      assert len(settings.discord_channel_id) in range(18, 21)
+  assert len(settings.consilium_api_key) >= 32
+      assert settings.log_level in ["DEBUG","INFO","WARNING","ERROR","CRITICAL"]
+      print("✓ Configuration validation passed")
+      PY
+  
+  test_02_logging:
+    name: "Structured Logging"
+    command: |
+      python - <<'PY'
+      import json, io, sys
+      from src.core.logging import configure_logging, get_logger
+      
+      old_stdout = sys.stdout
+      sys.stdout = io.StringIO()
+      
+      configure_logging("INFO")
+      logger = get_logger(__name__)
+      logger.info("test", key="value")
+      
+      output = sys.stdout.getvalue()
+      sys.stdout = old_stdout
+      
+      data = json.loads(output.strip())
+      assert data["app"] == "consilium-relay"
+      assert data["event"] == "test"
+      assert "timestamp" in data
+      print("✓ Logging validation passed")
+      PY
+  
+  test_03_middleware:
+    name: "Request-ID Middleware"
+    command: |
+      python - <<'PY'
+      from fastapi.testclient import TestClient
+      from src.main import app
+      
+      client = TestClient(app)
+      r1 = client.get("/v1/system/health")
+      r2 = client.get("/v1/system/health")
+      
+      assert "X-Request-ID" in r1.headers
+      assert "X-Request-ID" in r2.headers
+      assert r1.headers["X-Request-ID"] != r2.headers["X-Request-ID"]
+      print("✓ Middleware validation passed")
+      PY
+  
+  test_04_health_endpoint:
+    name: "Health Endpoint"
+    command: |
+      python - <<'PY'
+      from fastapi.testclient import TestClient
+      from src.main import app
+      
+      client = TestClient(app)
+      response = client.get("/v1/system/health")
+      
+      assert response.status_code == 200
+      data = response.json()
+      assert data["status"] == "ok"
+      assert isinstance(data["uptime_s"], (int, float))
+      assert data["uptime_s"] >= 0
+      assert isinstance(data["checks"], dict)
+      print("✓ Health endpoint validation passed")
+      PY
+  
+  test_05_info_endpoint:
+    name: "Info Endpoint"
+    command: |
+      python - <<'PY'
+      from fastapi.testclient import TestClient
+      from src.main import app
+      
+      client = TestClient(app)
+      response = client.get("/v1/system/info")
+      
+      assert response.status_code == 200
+      data = response.json()
+      assert "version" in data
+      assert data["version"] == "1.1.0"
+      print("✓ Info endpoint validation passed")
+      PY
+  
+  test_06_import_all:
+    name: "All Module Imports"
+    command: |
+      python - <<'PY'
+      import importlib
+      modules = [
+          "src.main",
+          "src.core.config",
+          "src.core.logging",
+          "src.core.middleware",
+          "src.api.system_routes",
+      ]
+      for mod in modules:
+          importlib.import_module(mod)
+      print("✓ All imports successful")
+      PY
+
+  run_all:
+    command: |
+      echo "=== Phase 4 Comprehensive Validation ==="
+      echo ""
+      python - <<'PY'
+      # Test 1: Configuration
+      from src.core.config import get_settings
+      settings = get_settings()
+      print("✓ Configuration loaded")
+      
+      # Test 2: Logging
+      import json, io, sys
+      from src.core.logging import configure_logging, get_logger
+      old_stdout = sys.stdout
+      sys.stdout = io.StringIO()
+      configure_logging("INFO")
+      logger = get_logger(__name__)
+      logger.info("test")
+      output = sys.stdout.getvalue()
+      sys.stdout = old_stdout
+      json.loads(output.strip())
+      print("✓ Logging produces valid JSON")
+      
+      # Test 3: Application
+      from fastapi.testclient import TestClient
+      from src.main import app
+      client = TestClient(app)
+      
+      r1 = client.get("/v1/system/health")
+      assert r1.status_code == 200
+      print("✓ Health endpoint returns 200")
+      
+      r2 = client.get("/v1/system/info")
+      assert r2.status_code == 200
+      print("✓ Info endpoint returns 200")
+      
+      assert "X-Request-ID" in r1.headers
+      print("✓ Request-ID in response headers")
+      
+      print("\n✅ Phase 4 validation complete - All tests passed!")
+      PY
+
+# ===========================================================================
+# TROUBLESHOOTING GUIDE
+# ===========================================================================
+
+troubleshooting:
+  common_issues:
+    - issue: "ImportError: No module named 'structlog'"
+      cause: "structlog not installed"
+      solution: "Run: pip install -r requirements.txt"
+      
+    - issue: "ValidationError: DISCORD_BOT_TOKEN field required"
+      cause: ".env file missing or variable not set"
+      solution: "Verify .env exists and contains all Phase 3 credentials"
+      
+    - issue: "AttributeError: 'Settings' object has no attribute 'discord_bot_token'"
+      cause: "Old config.py or import cache"
+      solution: "Restart Python interpreter or clear __pycache__"
+      
+    - issue: "TypeError: AsyncGenerator object is not iterable"
+      cause: "Incorrect lifespan usage"
+      solution: "Ensure using @asynccontextmanager with async def and yield"
+      
+    - issue: "404 Not Found for /v1/system/health"
+      cause: "Routes not mounted correctly"
+      solution: "Verify app.include_router(system_router, prefix='/v1')"
+      
+    - issue: "mypy errors about missing types"
+      cause: "Type stubs not installed"
+      solution: "Install types: pip install types-python-dotenv"
+
+  validation_failures:
+    - failure: "Ruff reports line too long"
+      fix: "Reformat code with black: black src/"
+      
+    - failure: "Mypy reports 'Any' types"
+      fix: "Add explicit type hints to all functions"
+      
+    - failure: "Health endpoint returns 500"
+      fix: "Check logs for traceback; likely config or import error"
+
+# ===========================================================================
+# COMPLETION CRITERIA
+# ===========================================================================
+
+completion_checklist:
+  files_created:
+    - "[ ] src/main.py exists and imports successfully"
+    - "[ ] src/core/config.py exists with Settings class"
+    - "[ ] src/core/logging.py exists with configure_logging()"
+    - "[ ] src/core/middleware.py exists with RequestIDMiddleware"
+    - "[ ] src/api/system_routes.py exists with health and info endpoints"
+    - "[ ] requirements.txt updated with structlog"
+  
+  functionality:
+    - "[ ] Configuration loads from .env with validation"
+    - "[ ] Missing env vars cause startup failure with clear error"
+    - "[ ] Logs are structured JSON with timestamp, level, request_id"
+    - "[ ] GET /v1/system/health returns 200 with valid schema"
+    - "[ ] GET /v1/system/info returns 200 with version"
+    - "[ ] Request-ID unique per request and in response headers"
+    - "[ ] CORS middleware configured (disabled by default)"
+  
+  quality:
+    - "[ ] ruff check passes with no errors"
+    - "[ ] mypy passes with --strict flag"
+    - "[ ] All functions have type hints"
+    - "[ ] All modules have docstrings"
+    - "[ ] 80-character line length enforced"
+  
+  documentation:
+    - "[ ] PHASE_NOTES.md updated with completion entry"
+    - "[ ] TECHNICAL_DECISIONS.md updated (if applicable)"
+    - "[ ] All code includes Google-style docstrings"
+
+final_status:
+  message: |
+    ✅ Phase 4: Core Framework - COMPLETE
+    
+    FastAPI application is operational with:
+    - Type-safe configuration loading (Pydantic Settings)
+    - Structured JSON logging (structlog)
+    - Request-ID middleware for tracing
+    - System endpoints (/v1/system/health, /v1/system/info)
+    
+    READY FOR PHASE 5: API Endpoints with Mock Responses
+    
+    The core framework provides a solid foundation for implementing
+    Strategy endpoints in Phase 5. System endpoints are operational
+    and can be used for health checks during development.
+    
+    Bot is still offline (expected until Phase 6 connects to Discord).

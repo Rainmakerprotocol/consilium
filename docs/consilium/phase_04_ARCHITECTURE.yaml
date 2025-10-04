@@ -1,0 +1,876 @@
+---
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: "phase_04_architecture"
+doc_title: "Phase 4 — Core Framework — Architecture"
+phase_id: "phase_04"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T22:00:00Z"
+last_updated_utc: "2025-10-04T22:00:00Z"
+blueprint_path: "./phase_04_BLUEPRINT.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, technical_leads]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_04_BLUEPRINT.yaml"
+  - "./00_COPILOT_INSTRUCTIONS.yml"
+  - "./00_AI_AGENT_RULES.yml"
+  - "../../consilium-openapi-v1.1.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+  produces:
+    - "./phase_04_IMPLEMENTATION.yaml"
+  updates:
+    - "./TECHNICAL_DECISIONS.yml"
+    - "./PHASE_NOTES.txt"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define HOW to implement the Phase 4 Blueprint requirements for
+     a minimal, production-ready FastAPI core framework.
+  2. Conformance: System endpoints MUST match canonical OpenAPI v1.1 spec exactly.
+  3. Tense policy: Use future tense while drafting; convert to past tense when COMPLETE.
+  4. Carry forward: Contract block copied verbatim from Blueprint.
+  5. Precision: Define exact module interfaces, middleware chains, and logging formats.
+  6. Validation: Design must satisfy all Blueprint success criteria.
+
+design_philosophy: >
+  Phase 4 establishes a minimal viable FastAPI foundation with three core
+  principles: (1) fail-fast configuration loading to catch environment issues
+  at startup, (2) structured JSON logging for operational observability, and
+  (3) clean separation between system operations (health/info) and business
+  logic (strategy endpoints in Phase 5+). The architecture prioritizes
+  simplicity and correctness over premature optimization.
+
+key_design_decisions:
+  - decision: "Pydantic BaseSettings for configuration"
+    rationale: "Type-safe env loading; validation at startup; fail-fast on misconfiguration"
+    alternatives_considered:
+      - "python-dotenv only (no validation)"
+      - "Custom config class with manual parsing"
+      - "Config files (YAML/TOML) instead of env vars"
+    tradeoffs: "Requires pydantic-settings package but provides strong typing and validation"
+    record_in_technical_decisions: true
+
+  - decision: "Structured JSON logging"
+    rationale: "Machine-parseable logs; easy integration with log aggregators (Datadog, CloudWatch)"
+    alternatives_considered:
+      - "Plain text logging"
+      - "Key-value pairs (logfmt)"
+      - "Binary logging (protobuf)"
+    tradeoffs: "More verbose than plain text but essential for production observability"
+    record_in_technical_decisions: true
+
+  - decision: "Request-ID middleware for traceability"
+    rationale: "Correlate logs across async operations; essential for debugging"
+    alternatives_considered:
+      - "No request tracking"
+      - "Thread-local storage"
+      - "OpenTelemetry (overkill for MVP)"
+    tradeoffs: "Adds small overhead but critical for production debugging"
+    record_in_technical_decisions: true
+
+  - decision: "Separate System endpoints from Strategy endpoints"
+    rationale: "System endpoints are operational; Strategy endpoints are business logic"
+    alternatives_considered:
+      - "All endpoints in single routes.py"
+      - "No separation until needed"
+    tradeoffs: "Slightly more files but clearer organization as system grows"
+    record_in_technical_decisions: false
+
+  - decision: "CORS middleware with restrictive defaults"
+    rationale: "Security-first approach; explicitly enable cross-origin as needed"
+    alternatives_considered:
+      - "Allow all origins (*)"
+      - "No CORS (rely on deployment config)"
+    tradeoffs: "May require CORS configuration for development; better security posture"
+    record_in_technical_decisions: false
+
+sections:
+
+  module_map: |
+    src/
+      api/
+        __init__.py              # Empty package marker
+        system_routes.py         # NEW: System endpoints (/v1/system/*)
+      discord/
+        __init__.py              # Empty package marker (Phase 6)
+      core/
+        __init__.py              # Empty package marker
+        config.py                # NEW: Configuration loader (Pydantic BaseSettings)
+        logging.py               # NEW: Structured JSON logger
+        middleware.py            # NEW: Request-ID middleware
+      main.py                    # MODIFIED: FastAPI app initialization
+
+  interfaces:
+    rest_endpoints:
+      - path: /v1/system/health
+        handler: "api.system_routes.health()"
+        method: GET
+        response_model: "HealthResponse"
+        status_codes: [200]
+        
+      - path: /v1/system/info
+        handler: "api.system_routes.info()"
+        method: GET
+        response_model: "InfoResponse"
+        status_codes: [200]
+
+    internal_apis:
+      - signature: "core.config.get_settings() -> Settings"
+        purpose: "Lazy singleton config loader; caches Settings instance"
+        
+      - signature: "core.logging.get_logger(name: str) -> structlog.BoundLogger"
+        purpose: "Get configured JSON logger for given module"
+        
+      - signature: "core.logging.configure_logging(log_level: str) -> None"
+        purpose: "Initialize logging system at app startup"
+        
+      - signature: "core.middleware.RequestIDMiddleware"
+        purpose: "ASGI middleware to inject request-id into logs"
+
+  non_functional_requirements:
+    - "App must start in <2 seconds on modern hardware"
+    - "Health check must respond in <50ms"
+    - "Structured logs must include: timestamp, level, message, request_id, module"
+    - "Configuration errors must fail startup with clear error message"
+    - "80-char lines, explicit type hints, Google-style docstrings"
+    - "100% type coverage (mypy strict mode)"
+
+system_architecture:
+
+  application_lifecycle:
+    startup_sequence:
+      - step: 1
+        action: "Load environment variables via python-dotenv"
+        responsibility: "python-dotenv (implicit in Pydantic BaseSettings)"
+        
+      - step: 2
+        action: "Validate configuration (fail-fast if invalid)"
+        responsibility: "core.config.Settings.__init__"
+        failure_mode: "ValidationError → sys.exit(1) with clear error"
+        
+      - step: 3
+        action: "Configure logging system"
+        responsibility: "core.logging.configure_logging()"
+        output: "Structured JSON logger ready"
+        
+      - step: 4
+        action: "Initialize FastAPI app"
+        responsibility: "src.main.app = FastAPI(...)"
+        
+      - step: 5
+        action: "Mount middleware (CORS, Request-ID)"
+        responsibility: "app.add_middleware(...)"
+        
+      - step: 6
+        action: "Register System routes"
+        responsibility: "app.include_router(system_router)"
+        
+      - step: 7
+        action: "Execute startup event handlers"
+        responsibility: "@app.on_event('startup')"
+        actions: ["Log app start", "Log config summary (non-secret values)"]
+    
+    shutdown_sequence:
+      - step: 1
+        action: "Execute shutdown event handlers"
+        responsibility: "@app.on_event('shutdown')"
+        actions: ["Log app shutdown", "Cleanup resources (none in Phase 4)"]
+
+  component_architecture:
+    - name: "FastAPI Application (src/main.py)"
+      purpose: "ASGI entrypoint; middleware chain; route registration"
+      responsibilities:
+        - "Initialize FastAPI app with metadata from OpenAPI spec"
+        - "Configure CORS middleware (restrictive by default)"
+        - "Add RequestIDMiddleware for log correlation"
+        - "Register System routes (/v1/system/*)"
+        - "Define startup/shutdown event handlers"
+        - "Expose 'app' for uvicorn to serve"
+      dependencies:
+        - "fastapi"
+        - "core.config.get_settings"
+        - "core.logging.configure_logging"
+        - "core.middleware.RequestIDMiddleware"
+        - "api.system_routes.router"
+      interface_example: |
+        from fastapi import FastAPI
+        from fastapi.middleware.cors import CORSMiddleware
+        from core.config import get_settings
+        from core.logging import configure_logging, get_logger
+        from core.middleware import RequestIDMiddleware
+        from api.system_routes import router as system_router
+
+        settings = get_settings()
+        configure_logging(settings.log_level)
+        logger = get_logger(__name__)
+
+        app = FastAPI(
+            title="Consilium Relay API",
+            version="1.1.0",
+            description="Multi-AI collaboration relay via Discord"
+        )
+
+        app.add_middleware(CORSMiddleware, allow_origins=[], allow_methods=["*"], allow_headers=["*"])
+        app.add_middleware(RequestIDMiddleware)
+        app.include_router(system_router, prefix="/v1")
+
+        @app.on_event("startup")
+        async def startup_event() -> None:
+            logger.info("app_startup", version=settings.version, log_level=settings.log_level)
+
+        @app.on_event("shutdown")
+        async def shutdown_event() -> None:
+            logger.info("app_shutdown")
+
+    - name: "Configuration Loader (src/core/config.py)"
+      purpose: "Type-safe environment variable loading with validation"
+      responsibilities:
+        - "Define Settings class with Pydantic BaseSettings"
+        - "Load .env file automatically"
+        - "Validate required fields (DISCORD_BOT_TOKEN, GUILD_ID, CHANNEL_ID, API_KEY)"
+        - "Provide typed access to config values"
+        - "Cache Settings instance (singleton pattern)"
+        - "Fail-fast on missing or invalid values"
+      dependencies:
+        - "pydantic-settings"
+        - "python-dotenv (implicit)"
+      validation_rules:
+        - "DISCORD_BOT_TOKEN: min_length=50"
+        - "DISCORD_GUILD_ID: regex=^\\d{18,20}$"
+        - "DISCORD_CHANNEL_ID: regex=^\\d{18,20}$"
+  - "CONSILIUM_API_KEY: min_length=32"
+        - "LOG_LEVEL: Literal['DEBUG','INFO','WARNING','ERROR','CRITICAL']"
+      interface_example: |
+        from functools import lru_cache
+        from pydantic_settings import BaseSettings, SettingsConfigDict
+        from pydantic import Field
+
+        class Settings(BaseSettings):
+            model_config = SettingsConfigDict(
+                env_file=".env",
+                env_file_encoding="utf-8",
+                case_sensitive=True
+            )
+
+            discord_bot_token: str = Field(..., min_length=50)
+            discord_guild_id: str = Field(..., pattern=r"^\d{18,20}$")
+            discord_channel_id: str = Field(..., pattern=r"^\d{18,20}$")
+            consilium_api_key: str = Field(..., min_length=32)
+            log_level: str = Field(default="INFO")
+            version: str = Field(default="1.1.0")
+
+        @lru_cache()
+        def get_settings() -> Settings:
+            return Settings()
+
+    - name: "Structured Logging (src/core/logging.py)"
+      purpose: "JSON-structured logs with request-id correlation"
+      responsibilities:
+        - "Configure structlog with JSON renderer"
+        - "Add processors: timestamp, log_level, request_id, caller"
+        - "Provide get_logger() factory for modules"
+        - "Support LOG_LEVEL configuration"
+        - "Never log secrets or PII"
+      dependencies:
+        - "structlog"
+        - "logging (stdlib)"
+      log_format:
+        fields:
+          - "timestamp: ISO8601 with timezone"
+          - "level: DEBUG|INFO|WARNING|ERROR|CRITICAL"
+          - "message: str"
+          - "request_id: UUID4 (from middleware)"
+          - "module: str (logger name)"
+          - "event: str (optional structured event name)"
+          - "**context: Additional key-value pairs"
+        example: |
+          {
+            "timestamp": "2025-10-04T22:15:30.123456Z",
+            "level": "info",
+            "message": "app_startup",
+            "request_id": "550e8400-e29b-41d4-a716-446655440000",
+            "module": "src.main",
+            "event": "startup",
+            "version": "1.1.0",
+            "log_level": "INFO"
+          }
+      interface_example: |
+        import structlog
+        import logging
+
+        def configure_logging(log_level: str = "INFO") -> None:
+            logging.basicConfig(
+                format="%(message)s",
+                level=getattr(logging, log_level.upper())
+            )
+            structlog.configure(
+                processors=[
+                    structlog.processors.TimeStamper(fmt="iso"),
+                    structlog.stdlib.add_log_level,
+                    structlog.processors.StackInfoRenderer(),
+                    structlog.processors.JSONRenderer()
+                ],
+                wrapper_class=structlog.make_filtering_bound_logger(
+                    getattr(logging, log_level.upper())
+                ),
+                context_class=dict,
+                logger_factory=structlog.stdlib.LoggerFactory(),
+                cache_logger_on_first_use=True
+            )
+
+        def get_logger(name: str) -> structlog.BoundLogger:
+            return structlog.get_logger(name)
+
+    - name: "Request-ID Middleware (src/core/middleware.py)"
+      purpose: "Inject unique request-id for log correlation"
+      responsibilities:
+        - "Generate UUID4 for each request"
+        - "Add to request.state.request_id"
+        - "Bind to structlog context"
+        - "Return in response header (X-Request-ID)"
+      dependencies:
+        - "starlette.middleware.base"
+        - "uuid"
+        - "structlog"
+      interface_example: |
+        import uuid
+        from starlette.middleware.base import BaseHTTPMiddleware
+        from starlette.requests import Request
+        from starlette.responses import Response
+        import structlog
+
+        class RequestIDMiddleware(BaseHTTPMiddleware):
+            async def dispatch(self, request: Request, call_next) -> Response:
+                request_id = str(uuid.uuid4())
+                request.state.request_id = request_id
+                structlog.contextvars.bind_contextvars(request_id=request_id)
+                response = await call_next(request)
+                response.headers["X-Request-ID"] = request_id
+                structlog.contextvars.unbind_contextvars("request_id")
+                return response
+
+    - name: "System Routes (src/api/system_routes.py)"
+      purpose: "Operational endpoints for health and metadata"
+      responsibilities:
+        - "Implement GET /v1/system/health"
+        - "Implement GET /v1/system/info"
+        - "Return responses matching OpenAPI schema"
+        - "Track app uptime for health endpoint"
+      dependencies:
+        - "fastapi"
+        - "time (for uptime calculation)"
+        - "core.config.get_settings"
+      endpoints:
+        - path: "/system/health"
+          method: "GET"
+          response:
+            status: 200
+            schema: "HealthResponse"
+            example: |
+              {
+                "status": "ok",
+                "uptime_s": 42.5,
+                "checks": {
+                  "config": "loaded",
+                  "logging": "configured"
+                }
+              }
+          
+        - path: "/system/info"
+          method: "GET"
+          response:
+            status: 200
+            schema: "InfoResponse"
+            example: |
+              {
+                "version": "1.1.0",
+                "git_sha": null,
+                "build_time": null
+              }
+      interface_example: |
+        import time
+        from fastapi import APIRouter
+        from pydantic import BaseModel
+        from core.config import get_settings
+        from typing import Optional
+
+        router = APIRouter()
+        start_time = time.time()
+
+        class HealthResponse(BaseModel):
+            status: str
+            uptime_s: float
+            checks: Optional[dict] = None
+
+        class InfoResponse(BaseModel):
+            version: str
+            git_sha: Optional[str] = None
+            build_time: Optional[str] = None
+
+        @router.get("/system/health", response_model=HealthResponse)
+        async def health() -> HealthResponse:
+            return HealthResponse(
+                status="ok",
+                uptime_s=time.time() - start_time,
+                checks={"config": "loaded", "logging": "configured"}
+            )
+
+        @router.get("/system/info", response_model=InfoResponse)
+        async def info() -> InfoResponse:
+            settings = get_settings()
+            return InfoResponse(
+                version=settings.version,
+                git_sha=None,
+                build_time=None
+            )
+
+data_models:
+  - name: "Settings"
+    module: "src/core/config.py"
+    purpose: "Application configuration from environment"
+    fields:
+      - name: "discord_bot_token"
+        type: "str"
+        validation: "min_length=50"
+        description: "Discord bot authentication token"
+        
+      - name: "discord_guild_id"
+        type: "str"
+        validation: "pattern=^\\d{18,20}$"
+        description: "Discord server (guild) ID"
+        
+      - name: "discord_channel_id"
+        type: "str"
+        validation: "pattern=^\\d{18,20}$"
+        description: "Discord channel ID for threads"
+        
+      - name: "consilium_api_key"
+        type: "str"
+        validation: "min_length=32"
+        description: "API key for relay authentication"
+        
+      - name: "log_level"
+        type: "str"
+        validation: "default='INFO'"
+        description: "Logging verbosity level"
+        
+      - name: "version"
+        type: "str"
+        validation: "default='1.1.0'"
+        description: "Application version"
+
+  - name: "HealthResponse"
+    module: "src/api/system_routes.py"
+    openapi_mapping: "#/components/schemas/HealthResponse"
+    fields:
+      - name: "status"
+        type: "str"
+        validation: "enum=['ok','starting','degraded']"
+        
+      - name: "uptime_s"
+        type: "float"
+        validation: "ge=0"
+        
+      - name: "checks"
+        type: "dict[str, str] | None"
+        validation: "optional"
+
+  - name: "InfoResponse"
+    module: "src/api/system_routes.py"
+    openapi_mapping: "#/components/schemas/InfoResponse"
+    fields:
+      - name: "version"
+        type: "str"
+        validation: "required"
+        
+      - name: "git_sha"
+        type: "str | None"
+        validation: "optional"
+        
+      - name: "build_time"
+        type: "str | None"
+        validation: "optional, ISO datetime format"
+
+data_flow:
+  - flow_name: "Application Startup"
+    sequence:
+      - "python-dotenv loads .env file"
+      - "Pydantic Settings validates environment variables"
+      - "configure_logging() initializes structlog"
+      - "FastAPI app initializes with metadata"
+      - "Middleware registered (CORS, RequestID)"
+      - "System routes mounted at /v1"
+      - "Startup event handler executes"
+      - "App ready to serve requests"
+    failure_points:
+      - point: "Settings validation"
+        error: "ValidationError"
+        action: "Log error, exit(1)"
+        
+      - point: "Logging configuration"
+        error: "ImportError, AttributeError"
+        action: "Fail-fast with traceback"
+
+  - flow_name: "GET /v1/system/health Request"
+    sequence:
+      - "Request arrives at ASGI server (uvicorn)"
+      - "RequestIDMiddleware generates UUID, binds to context"
+      - "CORS middleware validates origin (if applicable)"
+      - "FastAPI routes request to system_routes.health()"
+      - "Handler calculates uptime, builds HealthResponse"
+      - "Response serialized to JSON"
+      - "X-Request-ID header added"
+      - "Response returned with 200 status"
+
+  - flow_name: "GET /v1/system/info Request"
+    sequence:
+      - "Request arrives at ASGI server"
+      - "RequestIDMiddleware generates UUID"
+      - "FastAPI routes to system_routes.info()"
+      - "Handler loads Settings singleton"
+      - "InfoResponse built with version (git_sha/build_time null for now)"
+      - "Response serialized to JSON"
+      - "Response returned with 200 status"
+
+error_handling_strategy:
+  configuration_errors:
+    - error_type: "ValidationError (Pydantic)"
+      trigger: "Missing or invalid environment variable"
+      response: "Print clear error to stderr, exit(1)"
+      example: "DISCORD_BOT_TOKEN: field required"
+      
+    - error_type: "FileNotFoundError (.env)"
+      trigger: ".env file missing"
+      response: "Log warning, attempt to load from environment"
+      note: "Pydantic tries env vars even without .env file"
+
+  runtime_errors:
+    - error_type: "Unhandled exception in endpoint"
+      trigger: "Bug in route handler"
+      response: "FastAPI default error handler returns 500 with generic message"
+      logging: "Log full traceback with ERROR level"
+      
+    - error_type: "Invalid request (400)"
+      trigger: "Pydantic validation on request body"
+      response: "FastAPI returns 400 with validation error details"
+      logging: "Log at INFO level (expected errors)"
+
+  logging_strategy:
+    levels:
+      - level: "DEBUG"
+        usage: "Development only; verbose internal state"
+        
+      - level: "INFO"
+        usage: "Production default; startup, shutdown, request logs"
+        
+      - level: "WARNING"
+        usage: "Unexpected but recoverable conditions"
+        
+      - level: "ERROR"
+        usage: "Failures requiring attention"
+        
+      - level: "CRITICAL"
+        usage: "System-level failures (should never occur in Phase 4)"
+
+middleware_architecture:
+  chain_order:
+    - position: 1
+      middleware: "CORSMiddleware"
+      purpose: "Validate cross-origin requests"
+      config:
+        allow_origins: "[]  # Empty list = no CORS (same-origin only)"
+        allow_methods: "['*']  # Permissive methods (GET, POST, etc.)"
+        allow_headers: "['*']  # Permissive headers"
+      rationale: "CORS disabled by default for security; enable per-environment"
+      
+    - position: 2
+      middleware: "RequestIDMiddleware"
+      purpose: "Generate and inject request-id for tracing"
+      config: "No configuration needed"
+      rationale: "Must run before route handlers to ensure request-id in logs"
+
+  future_middleware:
+    - "RateLimitMiddleware (Phase 5+)"
+    - "AuthenticationMiddleware (Phase 5+)"
+    - "CompressionMiddleware (post-MVP optimization)"
+
+interface_contracts:
+  - interface_name: "IConfigProvider"
+    purpose: "Abstract config access (allows testing with mocks)"
+    implementers: ["Settings (real)", "MockSettings (tests)"]
+    contract: |
+      class IConfigProvider(ABC):
+          @property
+          @abstractmethod
+          def discord_bot_token(self) -> str: ...
+          
+          @property
+          @abstractmethod
+          def discord_guild_id(self) -> str: ...
+          
+          @property
+          @abstractmethod
+          def discord_channel_id(self) -> str: ...
+          
+          @property
+          @abstractmethod
+          def consilium_api_key(self) -> str: ...
+          
+          @property
+          @abstractmethod
+          def log_level(self) -> str: ...
+    note: "Not implemented in Phase 4 (YAGNI); add when testing demands it"
+
+performance_considerations:
+  startup_time:
+    target: "<2 seconds on modern hardware"
+    breakdown:
+      - "Import modules: ~0.5s"
+      - "Load .env: ~0.01s"
+      - "Validate config: ~0.01s"
+      - "Configure logging: ~0.1s"
+      - "Initialize FastAPI: ~0.3s"
+      - "Register routes: ~0.05s"
+      - "Startup event: ~0.01s"
+    total_estimate: "~1s (well under 2s target)"
+
+  health_check_latency:
+    target: "<50ms"
+    breakdown:
+      - "Middleware overhead: ~1ms"
+      - "Route resolution: ~0.5ms"
+      - "Handler execution: ~0.1ms (arithmetic only)"
+      - "Serialization: ~0.5ms"
+    total_estimate: "~2ms (well under 50ms target)"
+
+  memory_usage:
+    baseline: "~30 MB (Python + FastAPI + dependencies)"
+    per_request: "<1 KB (no caching in Phase 4)"
+
+security_architecture:
+  secrets_management:
+    approach: "Environment variables loaded via Pydantic Settings"
+    storage: ".env file (gitignored) for development"
+    production: "Platform-provided env vars (Railway, Fly.io secrets)"
+    rotation: "Manual for MVP; automate post-MVP"
+
+  input_validation:
+    - layer: "Pydantic Models"
+      scope: "Environment variables (config)"
+      enforcement: "Startup validation (fail-fast)"
+      
+    - layer: "FastAPI + Pydantic"
+      scope: "Request bodies (future phases)"
+      enforcement: "Automatic 400 on invalid requests"
+
+  logging_safety:
+    never_log:
+      - "DISCORD_BOT_TOKEN"
+      - "CONSILIUM_API_KEY"
+      - "Any field containing 'token', 'key', 'secret', 'password'"
+    safe_to_log:
+      - "discord_guild_id (low sensitivity)"
+      - "discord_channel_id (low sensitivity)"
+      - "log_level"
+      - "version"
+
+  cors_policy:
+    phase_4: "No CORS (same-origin only)"
+    development: "Can enable localhost:* for testing"
+    production: "Allowlist specific origins (Claude.ai, ChatGPT proxy)"
+
+testing_strategy:
+  unit_tests:
+    - test_file: "tests/test_config.py"
+      purpose: "Config loading, validation, error cases"
+      cases:
+        - "Valid .env loads successfully"
+        - "Missing required field raises ValidationError"
+        - "Invalid format (e.g., short token) raises ValidationError"
+        - "get_settings() returns singleton"
+      
+    - test_file: "tests/test_logging.py"
+      purpose: "Logger configuration and output format"
+      cases:
+        - "configure_logging() succeeds"
+        - "get_logger() returns bound logger"
+        - "Log output is valid JSON"
+        - "Request-id propagates to logs"
+      
+    - test_file: "tests/test_middleware.py"
+      purpose: "RequestIDMiddleware behavior"
+      cases:
+        - "Request-id generated and added to state"
+        - "X-Request-ID header in response"
+        - "Request-id different per request"
+      
+    - test_file: "tests/test_system_routes.py"
+      purpose: "System endpoint responses"
+      cases:
+        - "GET /v1/system/health returns 200 with valid schema"
+        - "GET /v1/system/info returns 200 with version"
+        - "Health uptime increases over time"
+
+  integration_tests:
+    - test_file: "tests/test_app.py"
+      purpose: "End-to-end app startup and requests"
+      cases:
+        - "App starts with valid .env"
+        - "App fails to start with missing env var"
+        - "Health check returns 200"
+        - "Info endpoint returns 200"
+        - "Request-id in response headers"
+
+  test_configuration:
+    fixtures:
+      - "tmp_env_file: Create temporary .env for testing"
+      - "test_client: FastAPI TestClient instance"
+      - "mock_settings: Settings with test values"
+
+deployment_architecture:
+  target_platforms:
+    - name: "Railway"
+      config: "Environment variables via dashboard"
+      health_check: "GET /v1/system/health"
+      
+    - name: "Fly.io"
+      config: "fly.toml + secrets set"
+      health_check: "GET /v1/system/health"
+      
+    - name: "Render"
+      config: "Environment variables via dashboard"
+      health_check: "GET /v1/system/health"
+
+  environment_variables:
+    required:
+      - "DISCORD_BOT_TOKEN"
+      - "DISCORD_GUILD_ID"
+      - "DISCORD_CHANNEL_ID"
+      - "CONSILIUM_API_KEY"
+    optional:
+      - "LOG_LEVEL (default: INFO)"
+      - "VERSION (default: 1.1.0)"
+
+  health_checks:
+    endpoint: "/v1/system/health"
+    success_criteria: "200 status AND status='ok'"
+    failure_action: "Restart container after 3 consecutive failures"
+    interval: "30 seconds"
+
+acceptance_criteria:
+  architecture_complete_when:
+    - "Every Blueprint requirement has implementation specification"
+    - "All modules defined with interfaces and responsibilities"
+    - "Error handling covers all failure modes"
+    - "Security considerations documented (secrets, CORS, logging)"
+    - "Testing strategy defined for unit and integration tests"
+    - "Performance targets specified and achievable"
+    - "No TBD/TODO markers remain"
+    - "TECHNICAL_DECISIONS.md updated"
+    - "Converted to past tense with status=COMPLETE"
+
+contract:
+  purpose: >
+    Build a minimal, production-ready core framework: FastAPI app entrypoint,
+    configuration loader (Pydantic BaseSettings), and structured logging. Expose
+    /v1/system/health and /v1/system/info per the canonical API.
+  inputs:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_01_BLUEPRINT.yaml"
+    - "./phase_01_ARCHITECTURE.yaml"
+    - "./phase_01_IMPLEMENTATION.yaml"
+    - "./phase_02_BLUEPRINT.yaml"
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "./phase_02_IMPLEMENTATION.yaml"
+    - "./phase_03_BLUEPRINT.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "./phase_03_IMPLEMENTATION.yaml"
+  outputs:
+    - "src/main.py"
+    - "src/core/config.py"
+    - "src/core/logging.py"
+  acceptance:
+    ci_gate: |
+      python - <<'PY'
+      import importlib, sys
+      # 1) App importable and exposes FastAPI instance 'app'
+      try:
+          m = importlib.import_module("src.main")
+          app = getattr(m, "app", None)
+          assert app is not None, "src.main.app missing"
+      except Exception as e:
+          print("Import failure:", e); sys.exit(1)
+
+      # 2) OpenAPI System routes present (paths only; no network)
+      paths = {getattr(r, 'path', None) for r in app.routes}
+      expected = {"/v1/system/health", "/v1/system/info"}
+      missing = sorted(list(expected - paths))
+      if missing:
+          print("Missing routes:", missing); sys.exit(1)
+
+      print("Phase 4 CI preflight passed.")
+      PY
+    expected: "Import succeeds and both System routes are mounted."
+  rollback: "git checkout -- src/main.py src/core/config.py src/core/logging.py"
+
+ci_gate:
+  commands: |
+    # Static analysis
+    ruff check src/main.py src/core/
+    mypy src/main.py src/core/
+    
+    # Import check
+    python - <<'PY'
+    import importlib
+    m = importlib.import_module("src.main")
+    app = getattr(m, "app")
+    paths = {getattr(r, 'path', None) for r in app.routes}
+    assert "/v1/system/health" in paths
+    assert "/v1/system/info" in paths
+    print("✓ App imports and routes mounted")
+    PY
+    
+    # Unit tests
+    pytest tests/test_config.py tests/test_logging.py tests/test_system_routes.py -v
+  expected: "All commands exit 0"
+
+rollback_procedure:
+  - "Revert files: git checkout -- src/main.py src/core/config.py src/core/logging.py src/core/middleware.py src/api/system_routes.py"
+  - "If changes span commits: git reset --hard <last_passing_commit>"
+  - "Verify clean state: python -m pytest tests/"
+
+links_and_references:
+  phase_documents:
+    blueprint: "./phase_04_BLUEPRINT.yaml"
+    implementation: "./phase_04_IMPLEMENTATION.yaml"
+  phase_plan: "../../consilium-9_phase_plan.yml"
+
+  source_of_truth:
+    openapi_schema: "../../consilium-openapi-v1.1.yaml"
+    copilot_readme: "./00_COPILOT_INSTRUCTIONS.yml"
+    ai_agent_rules: "./00_AI_AGENT_RULES.yml"
+
+  supporting_documentation:
+    phase_notes: "./PHASE_NOTES.txt"
+    technical_decisions: "./TECHNICAL_DECISIONS.yml"
+
+version_history:
+  - version: "0.1.0"
+    date: "2025-10-04T22:00:00Z"
+    changes: "Initial Phase 4 Architecture draft; defined FastAPI app structure, config loading, structured logging, middleware, and System endpoints"
+    author: "Claude (AI Assistant)"
+    status: "DRAFT"
