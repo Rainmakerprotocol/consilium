@@ -1,0 +1,70 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "{PHASE_ID}_blueprint"
+doc_title: "{DOC_TITLE}"
+phase_id: "{PHASE_ID}"                # e.g. phase_05
+api_version: "v1.1"                     # aligns with OpenAPI spec
+status: "DRAFT"                         # DRAFT | IN_PROGRESS | COMPLETE
+created_utc: "2025-10-03T14:30:05Z"
+last_updated_utc: "2025-10-03T14:30:05Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+authority_order:                        # conflict resolution precedence
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+cross_doc_relationship:
+  consumes: [parent_phase_blueprint, phase_0_docs]
+  produces: [architecture_doc, implementation_doc]
+  updates: [phase_notes, technical_decisions]
+---
+
+copilot_instructions: |
+  1. Purpose: This file defines WHY this phase exists and WHAT it must deliver.
+  2. Read order: First apply Phase-0 rules, then canonical spec, then this Blueprint.
+  3. Tense policy: Use future tense while drafting ("will create"), convert to past tense once COMPLETE.
+  4. Carry forward: Inputs / Outputs / Acceptance blocks must appear identically in ARCHITECTURE and IMPLEMENTATION.
+  5. Validation: All Acceptance criteria must be objective (commands, exit codes, HTTP checks).
+  6. Rollback: Always include reversion steps for files/commits.
+
+sections:
+  summary: "[One paragraph describing business goal, scope boundaries, and non-goals.]"
+
+  contract:
+    purpose: "<why this phase exists in 1–2 sentences>"
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "<other upstream docs>"
+    outputs:
+      - "<exact file paths to be created/modified in this phase>"
+    acceptance:
+      ci_gate: |
+        ruff . && mypy . && pytest -q
+      expected: "All commands exit with code 0."
+    rollback: "git checkout -- <paths>"
+
+  deliverables:
+    - "[Explicit list of files, configs, or documents produced by this phase.]"
+
+  success_criteria:
+    - "Binary pass/fail outcomes only."
+    - "pytest exit code 0"
+    - "GET /v1/system/health returns {'status':'ok'}"
+    - "Coverage >80% in src/api and src/discord"
+
+  risks_and_mitigations:
+    - "[Concise list of likely risks and mitigations.]"
+
+  rollback_procedure:
+    - "Revert changed files: git checkout -- <paths>"
+    - "If rollback crosses commits, reset branch to last passing commit."
+
+  cross_doc_links:
+    architecture: "./{PHASE_ID}_ARCHITECTURE.md"
+    implementation: "./{PHASE_ID}_IMPLEMENTATION.md"
+    related_adrs:
+      - "../adr/ADR-XXXX.md"

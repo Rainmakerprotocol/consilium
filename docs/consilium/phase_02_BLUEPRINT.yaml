@@ -1,0 +1,153 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_02_blueprint"
+doc_title: "Phase 2 — Repository Foundation & Dependencies — Blueprint"
+phase_id: "phase_02"
+api_version: "v1.1"            # aligns with OpenAPI spec
+status: "DRAFT"
+created_utc: "2025-10-04T17:45:00Z"
+last_updated_utc: "2025-10-04T17:45:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_01_BLUEPRINT.yaml"
+    - "./phase_01_ARCHITECTURE.yaml"
+    - "./phase_01_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "./phase_02_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 2 exists and WHAT must be delivered to scaffold
+     a production-ready repository with pinned dependencies and developer
+     ergonomics.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phase 1 docs → This
+     Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 2 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable.
+  6. Non-goals: No business logic; no Discord calls; no endpoint implementations.
+
+sections:
+
+  summary: >
+    Phase 2 will establish the repository foundation and declare pinned
+    dependencies so that later phases can implement the API and Discord
+    integration with confidence. Outputs include a fully initialized directory
+    tree (src/, tests/, docs/), baseline tooling configuration (pyproject for
+    black/isort/mypy), reproducible dependency set (requirements.txt), an
+    environment template (.env.example), and minimal documentation (README) to
+    run the app locally. This phase explicitly avoids writing feature code or
+    invoking Discord APIs.
+
+  contract:
+    purpose: >
+      Create a reproducible, convention-driven Python 3.11 FastAPI project
+      skeleton with pinned dependencies, tool configs, and environment scaffolds
+      that conform to Phase 1 specifications and the OpenAPI v1.1 contract.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_01_BLUEPRINT.yaml"
+      - "./phase_01_ARCHITECTURE.yaml"
+      - "./phase_01_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/api/__init__.py"
+      - "src/discord/__init__.py"
+      - "src/core/__init__.py"
+      - "src/main.py"                # empty shell to be expanded in Phase 4
+      - "tests/__init__.py"
+      - "docs/"                      # docs directory exists and is tracked
+      - "requirements.txt"
+      - ".env.example"
+      - ".gitignore"
+      - "pyproject.toml"
+      - "README.md"
+    acceptance:
+      ci_gate: |
+        python -m pip install -r requirements.txt
+        python - <<'PY'
+        import sys, pathlib, re
+        must_exist = [
+          "src/api/__init__.py",
+          "src/discord/__init__.py",
+          "src/core/__init__.py",
+          "src/main.py",
+          "tests/__init__.py",
+          "requirements.txt",
+          ".env.example",
+          ".gitignore",
+          "pyproject.toml",
+          "README.md",
+        ]
+        missing = [p for p in must_exist if not pathlib.Path(p).exists()]
+        if missing:
+            print("Missing:", missing); sys.exit(1)
+        env = pathlib.Path(".env.example").read_text(encoding="utf-8")
+        for key in ["DISCORD_BOT_TOKEN", "DISCORD_GUILD_ID", "DISCORD_CHANNEL_ID", "CONSILIUM_API_KEY", "LOG_LEVEL"]:
+            assert key in env, f"Missing env var in .env.example: {key}"
+        pyproj = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+        for tool in ["tool.black", "tool.isort", "tool.mypy"]:
+            assert tool in pyproj, f"Missing {tool} config in pyproject.toml"
+        print("Phase 2 acceptance checks passed.")
+        PY
+      expected: "All checks succeed; missing files = 0; tool configs & env keys present."
+    rollback: "git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md"
+
+  deliverables:
+    - "Pinned requirements.txt with exact versions (FastAPI, Uvicorn, Pydantic, discord.py, dotenv, pytest suite)."
+    - ".env.example documenting required variables: DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_CHANNEL_ID, CONSILIUM_API_KEY, LOG_LEVEL."
+    - ".gitignore excluding .env, __pycache__/, *.pyc, .pytest_cache/, .coverage."
+    - "pyproject.toml with tool configs: black, isort, mypy (80-char lines, type hints)."
+    - "Project README with overview, setup, and local run instructions."
+    - "Directory tree with stub __init__.py files under src/api, src/discord, src/core, and tests."
+    - "Placeholders for docs/ to host specs and phase documents."
+    - "src/main.py placeholder (to be implemented in Phase 4)."
+
+  success_criteria:
+    - "pip install -r requirements.txt exits 0."
+    - "All required files exist and are tracked."
+    - ".env.example contains all required keys with descriptive comments."
+    - "pyproject.toml contains black/isort/mypy sections."
+    - "README contains Setup and Running locally sections."
+    - "Directory structure matches consilium-9_phase_plan."
+    - "No secrets are committed (.env in .gitignore)."
+
+  risks_and_mitigations:
+    - "Dependency conflicts → Pin exact versions and test installation in clean venv."
+    - "Accidental secret commit → Provide .env.example and ensure .env is gitignored."
+    - "Tooling drift across machines → Centralize config in pyproject.toml."
+    - "OS discrepancies (Windows/Linux) → Use cross-platform paths and commands."
+    - "Spec drift → Treat OpenAPI as source of truth and reference it in README."
+
+  rollback_procedure:
+    - "Revert changed files: git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md"
+    - "If rollback crosses commits, reset to last passing commit."
+
+  cross_doc_links:
+    architecture: "./phase_02_ARCHITECTURE.yaml"
+    implementation: "./phase_02_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0001-dependencies-pin-policy.md"
+      - "../adr/ADR-0002-directory-structure-conventions.md"

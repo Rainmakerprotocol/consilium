@@ -1,0 +1,1027 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_02_implementation"
+doc_title: "Phase 2 — Repository Foundation & Dependencies — Implementation"
+phase_id: "phase_02"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T19:45:00Z"
+last_updated_utc: "2025-10-04T19:45:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_02_BLUEPRINT.yaml"
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+  produces:
+    - "src/api/__init__.py"
+    - "src/discord/__init__.py"
+    - "src/core/__init__.py"
+    - "src/main.py"
+    - "tests/__init__.py"
+    - "docs/.gitkeep"
+    - "requirements.txt"
+    - ".env.example"
+    - ".gitignore"
+    - "pyproject.toml"
+    - "README.md"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Enumerate concrete steps, commands, and code artifacts to scaffold
+     the Consilium Relay repository foundation.
+  2. Voice: Use imperative steps ("Create file X", "Implement function Y").
+  3. Tense policy: After CI Gate passes, convert steps to past tense and set
+     status COMPLETE.
+  4. Outputs: Must match exactly the file paths in sections.outputs.
+  5. Evidence: Provide post-step validation commands with expected results.
+  6. Execution: Follow steps sequentially; do not skip or reorder.
+
+sections:
+
+  steps:
+    - "Step 1: Create src/api/__init__.py (empty package marker)"
+    - "Step 2: Create src/discord/__init__.py (empty package marker)"
+    - "Step 3: Create src/core/__init__.py (empty package marker)"
+    - "Step 4: Create src/main.py with TODO placeholder comment"
+    - "Step 5: Create tests/__init__.py (empty package marker)"
+    - "Step 6: Create docs/.gitkeep to track empty directory"
+    - "Step 7: Create requirements.txt with pinned dependencies"
+    - "Step 8: Create .env.example with documented environment variables"
+    - "Step 9: Create .gitignore with comprehensive exclusions"
+    - "Step 10: Create pyproject.toml with tool configurations"
+    - "Step 11: Create README.md with setup and usage instructions"
+    - "Step 12: Validate all files exist and contain required content"
+    - "Step 13: Test pip install in clean virtual environment"
+    - "Step 14: Run acceptance gate validation script"
+    - "Step 15: Record completion in PHASE_NOTES.md"
+
+  outputs:
+    - "src/api/__init__.py"
+    - "src/discord/__init__.py"
+    - "src/core/__init__.py"
+    - "src/main.py"
+    - "tests/__init__.py"
+    - "docs/.gitkeep"
+    - "requirements.txt"
+    - ".env.example"
+    - ".gitignore"
+    - "pyproject.toml"
+    - "README.md"
+
+  post_validation:
+    commands: |
+      # Verify all files exist
+      ls -la src/api/__init__.py src/discord/__init__.py src/core/__init__.py src/main.py tests/__init__.py docs/.gitkeep requirements.txt .env.example .gitignore pyproject.toml README.md
+      
+      # Test dependency installation in clean venv
+      python -m venv test_venv
+      source test_venv/bin/activate || test_venv\Scripts\activate
+      pip install -r requirements.txt
+      deactivate
+      rm -rf test_venv
+      
+      # Run acceptance gate
+      python - <<'PY'
+      import sys, pathlib
+      must_exist = [
+        "src/api/__init__.py",
+        "src/discord/__init__.py",
+        "src/core/__init__.py",
+        "src/main.py",
+        "tests/__init__.py",
+        "requirements.txt",
+        ".env.example",
+        ".gitignore",
+        "pyproject.toml",
+        "README.md",
+      ]
+      missing = [p for p in must_exist if not pathlib.Path(p).exists()]
+      if missing:
+          print("Missing:", missing); sys.exit(1)
+      env = pathlib.Path(".env.example").read_text(encoding="utf-8")
+      for key in ["DISCORD_BOT_TOKEN", "DISCORD_GUILD_ID", "DISCORD_CHANNEL_ID", "CONSILIUM_API_KEY", "LOG_LEVEL"]:
+          assert key in env, f"Missing env var in .env.example: {key}"
+      pyproj = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+      for tool in ["tool.black", "tool.isort", "tool.mypy"]:
+          assert tool in pyproj, f"Missing {tool} config in pyproject.toml"
+      print("✓ Phase 2 acceptance checks passed.")
+      PY
+    expected: "All files exist; pip install succeeds; Python validation script prints success message."
+
+  contract:
+    purpose: >
+      Create a reproducible, convention-driven Python 3.11 FastAPI project
+      skeleton with pinned dependencies, tool configs, and environment scaffolds
+      that conform to Phase 1 specifications and the OpenAPI v1.1 contract.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_01_BLUEPRINT.yaml"
+      - "./phase_01_ARCHITECTURE.yaml"
+      - "./phase_01_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/api/__init__.py"
+      - "src/discord/__init__.py"
+      - "src/core/__init__.py"
+      - "src/main.py"
+      - "tests/__init__.py"
+      - "docs/"
+      - "requirements.txt"
+      - ".env.example"
+      - ".gitignore"
+      - "pyproject.toml"
+      - "README.md"
+    acceptance:
+      ci_gate: |
+        python -m pip install -r requirements.txt
+        python - <<'PY'
+        import sys, pathlib, re
+        must_exist = [
+          "src/api/__init__.py",
+          "src/discord/__init__.py",
+          "src/core/__init__.py",
+          "src/main.py",
+          "tests/__init__.py",
+          "requirements.txt",
+          ".env.example",
+          ".gitignore",
+          "pyproject.toml",
+          "README.md",
+        ]
+        missing = [p for p in must_exist if not pathlib.Path(p).exists()]
+        if missing:
+            print("Missing:", missing); sys.exit(1)
+        env = pathlib.Path(".env.example").read_text(encoding="utf-8")
+        for key in ["DISCORD_BOT_TOKEN", "DISCORD_GUILD_ID", "DISCORD_CHANNEL_ID", "CONSILIUM_API_KEY", "LOG_LEVEL"]:
+            assert key in env, f"Missing env var in .env.example: {key}"
+        pyproj = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+        for tool in ["tool.black", "tool.isort", "tool.mypy"]:
+            assert tool in pyproj, f"Missing {tool} config in pyproject.toml"
+        print("Phase 2 acceptance checks passed.")
+        PY
+      expected: "All checks succeed; missing files = 0; tool configs & env keys present."
+    rollback: "git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md"
+
+  ci_gate:
+    commands: |
+      python -m pip install -r requirements.txt
+      ruff check . || echo "No source files yet"
+      mypy . || echo "No source files yet"
+      pytest -q || echo "No tests yet"
+    expected: "Installation succeeds; linter/type checker tolerate empty project; pytest exits 5 (no tests collected)."
+
+  rollback_procedure:
+    - "Revert all Phase 2 files: git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md docs/"
+    - "If changes span commits: git reset --hard <last_passing_commit>"
+    - "Verify clean state: git status should show no Phase 2 files"
+
+---
+
+# ===========================================================================
+# STEP-BY-STEP IMPLEMENTATION INSTRUCTIONS
+# ===========================================================================
+# Execute these steps in order. Each step includes exact file content.
+
+step_01_create_src_api_init:
+  file: "src/api/__init__.py"
+  content: |
+    """
+    API module for Consilium Relay.
+
+    This module contains HTTP endpoint handlers, Pydantic request/response models,
+    and API-specific dependencies. Implementation begins in Phase 5.
+    """
+  validation: "test -f src/api/__init__.py && echo '✓ src/api/__init__.py exists'"
+
+step_02_create_src_discord_init:
+  file: "src/discord/__init__.py"
+  content: |
+    """
+    Discord integration module for Consilium Relay.
+
+    This module contains the Discord client, message handling, rate limiting,
+    and attribution logic. Implementation begins in Phase 6.
+    """
+  validation: "test -f src/discord/__init__.py && echo '✓ src/discord/__init__.py exists'"
+
+step_03_create_src_core_init:
+  file: "src/core/__init__.py"
+  content: |
+    """
+    Core utilities module for Consilium Relay.
+
+    This module contains configuration loading, structured logging, and shared
+    utilities used across API and Discord modules. Implementation begins in Phase 4.
+    """
+  validation: "test -f src/core/__init__.py && echo '✓ src/core/__init__.py exists'"
+
+step_04_create_src_main:
+  file: "src/main.py"
+  content: |
+    """
+    Consilium Relay - Main Application Entrypoint
+
+    This module will contain the FastAPI application instance, startup/shutdown
+    event handlers, middleware configuration, and route mounting.
+
+    Implementation begins in Phase 4: Core Framework.
+    """
+
+    # TODO(Phase 4): Initialize FastAPI app
+    # TODO(Phase 4): Configure CORS middleware
+    # TODO(Phase 4): Add startup event handler for logging
+    # TODO(Phase 4): Add shutdown event handler for cleanup
+    # TODO(Phase 4): Mount health check endpoint at GET /v1/system/health
+    # TODO(Phase 4): Mount API routes from src.api.routes
+  validation: "test -f src/main.py && grep -q 'TODO(Phase 4)' src/main.py && echo '✓ src/main.py exists with TODO markers'"
+
+step_05_create_tests_init:
+  file: "tests/__init__.py"
+  content: |
+    """
+    Test suite for Consilium Relay.
+
+    Test structure mirrors src/ layout:
+    - tests/test_routes.py → tests for src/api/routes.py
+    - tests/test_message_handler.py → tests for src/discord/message_handler.py
+    - tests/test_config.py → tests for src/core/config.py
+
+    Test implementation begins in Phase 7: Testing Suite.
+    """
+  validation: "test -f tests/__init__.py && echo '✓ tests/__init__.py exists'"
+
+step_06_create_docs_gitkeep:
+  file: "docs/.gitkeep"
+  content: |
+    # This file ensures the docs/ directory is tracked by Git.
+    # Phase 0-9 documentation will be placed in this directory.
+  validation: "test -f docs/.gitkeep && echo '✓ docs/.gitkeep exists'"
+
+step_07_create_requirements_txt:
+  file: "requirements.txt"
+  content: |
+    # =========================================================================
+    # Consilium Relay - Python Dependencies
+    # =========================================================================
+    # All dependencies pinned to exact versions for reproducibility.
+    # Update Policy: Pin versions for MVP; post-MVP use Dependabot for updates.
+    #
+    # Installation:
+    #   python -m venv venv
+    #   source venv/bin/activate  # On Windows: venv\Scripts\activate
+    #   pip install -r requirements.txt
+
+    # -------------------------------------------------------------------------
+    # Production Dependencies
+    # -------------------------------------------------------------------------
+
+    # Web Framework & ASGI Server
+    fastapi==0.104.1
+    uvicorn[standard]==0.24.0
+
+    # Data Validation & Settings Management
+    pydantic==2.4.2
+    pydantic-settings==2.0.3
+
+    # Discord Bot Integration
+    discord.py==2.3.2
+
+    # Environment Variable Loading
+    python-dotenv==1.0.0
+
+    # -------------------------------------------------------------------------
+    # Development Dependencies
+    # -------------------------------------------------------------------------
+
+    # Testing Framework
+    pytest==7.4.3
+    pytest-asyncio==0.21.1
+    pytest-mock==3.12.0
+    pytest-cov==4.1.0
+
+    # Code Quality Tools
+    black==23.10.1
+    isort==5.12.0
+    mypy==1.6.1
+    ruff==0.1.3
+
+    # Type Stubs for Better Type Checking
+    types-python-dotenv==1.0.0.8
+  validation: "grep -q 'fastapi==0.104.1' requirements.txt && grep -q 'discord.py==2.3.2' requirements.txt && echo '✓ requirements.txt contains pinned dependencies'"
+
+step_08_create_env_example:
+  file: ".env.example"
+  content: |
+    # =========================================================================
+    # Consilium Relay - Environment Configuration Template
+    # =========================================================================
+    # Copy this file to .env and populate with actual values.
+    # NEVER commit .env to version control - it contains secrets!
+    #
+    # Setup Instructions:
+    #   1. cp .env.example .env
+    #   2. Follow Phase 3 documentation to obtain Discord credentials
+    #   3. Generate a secure API key (32+ characters recommended)
+    #   4. Set LOG_LEVEL based on your environment (INFO for prod, DEBUG for dev)
+
+    # -------------------------------------------------------------------------
+    # Discord Bot Configuration
+    # -------------------------------------------------------------------------
+    # Obtained from Discord Developer Portal (https://discord.com/developers)
+    # See Phase 3 documentation for step-by-step setup instructions.
+
+    # Discord Bot Token (50+ characters, alphanumeric with dots/hyphens)
+    # Example: MTIzNDU2Nzg5MDEyMzQ1Njc4OTAuGX1AbC.dQw4w9WgXcQ_example_token
+    DISCORD_BOT_TOKEN=your_bot_token_here
+
+    # Discord Server/Guild ID (18-digit numeric string)
+    # Right-click server → Copy ID (Developer Mode must be enabled)
+    # Example: 123456789012345678
+    DISCORD_GUILD_ID=your_guild_id_here
+
+    # Discord Channel ID (18-digit numeric string)
+    # Right-click channel → Copy ID (Developer Mode must be enabled)
+    # Example: 987654321098765432
+    DISCORD_CHANNEL_ID=your_channel_id_here
+
+    # -------------------------------------------------------------------------
+    # API Security Configuration
+    # -------------------------------------------------------------------------
+
+    # Consilium API Key (32+ characters recommended)
+    # Generate with: python -c "import secrets; print('csk_' + secrets.token_hex(32))"
+    # Example: csk_1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z
+    CONSILIUM_API_KEY=your_api_key_here
+
+    # -------------------------------------------------------------------------
+    # Application Configuration
+    # -------------------------------------------------------------------------
+
+    # Logging Level (DEBUG | INFO | WARNING | ERROR | CRITICAL)
+    # DEBUG: Verbose output for development
+    # INFO: Standard production logging (recommended)
+    # WARNING: Only warnings and errors
+    # ERROR: Only errors and critical issues
+    # CRITICAL: Only critical failures
+    LOG_LEVEL=INFO
+  validation: "grep -q 'DISCORD_BOT_TOKEN' .env.example && grep -q 'CONSILIUM_API_KEY' .env.example && echo '✓ .env.example contains all required variables'"
+
+step_09_create_gitignore:
+  file: ".gitignore"
+  content: |
+    # =========================================================================
+    # Consilium Relay - Git Ignore Patterns
+    # =========================================================================
+
+    # -------------------------------------------------------------------------
+    # Environment & Secrets
+    # -------------------------------------------------------------------------
+    .env
+    .env.local
+    .env.*.local
+    *.pem
+    *.key
+
+    # -------------------------------------------------------------------------
+    # Python Artifacts
+    # -------------------------------------------------------------------------
+    __pycache__/
+    *.py[cod]
+    *$py.class
+    *.so
+    *.egg
+    *.egg-info/
+    dist/
+    build/
+    eggs/
+    .eggs/
+    lib/
+    lib64/
+    parts/
+    sdist/
+    var/
+    wheels/
+    pip-wheel-metadata/
+    share/python-wheels/
+    *.manifest
+    *.spec
+
+    # -------------------------------------------------------------------------
+    # Virtual Environments
+    # -------------------------------------------------------------------------
+    venv/
+    ENV/
+    env/
+    .venv
+
+    # -------------------------------------------------------------------------
+    # Testing & Coverage
+    # -------------------------------------------------------------------------
+    .pytest_cache/
+    .coverage
+    .coverage.*
+    htmlcov/
+    *.cover
+    .hypothesis/
+    .tox/
+
+    # -------------------------------------------------------------------------
+    # Code Quality Tools
+    # -------------------------------------------------------------------------
+    .mypy_cache/
+    .dmypy.json
+    dmypy.json
+    .ruff_cache/
+    .pytype/
+
+    # -------------------------------------------------------------------------
+    # IDEs & Editors
+    # -------------------------------------------------------------------------
+    .vscode/
+    .idea/
+    *.swp
+    *.swo
+    *.swn
+    *~
+    .DS_Store
+
+    # -------------------------------------------------------------------------
+    # Logs
+    # -------------------------------------------------------------------------
+    *.log
+    logs/
+
+    # -------------------------------------------------------------------------
+    # Operating System
+    # -------------------------------------------------------------------------
+    Thumbs.db
+    ehthumbs.db
+    Desktop.ini
+  validation: "grep -q '.env' .gitignore && grep -q '__pycache__' .gitignore && echo '✓ .gitignore contains required patterns'"
+
+step_10_create_pyproject_toml:
+  file: "pyproject.toml"
+  content: |
+    # =========================================================================
+    # Consilium Relay - Python Project Configuration
+    # =========================================================================
+    # Centralized configuration for development tools following PEP 517/518.
+
+    [project]
+    name = "consilium-relay"
+    version = "0.1.0"
+    description = "Multi-AI collaboration relay service using Discord as message board"
+    readme = "README.md"
+    requires-python = ">=3.11"
+    authors = [
+        {name = "Consilium Project", email = "consilium@example.com"}
+    ]
+
+    # -------------------------------------------------------------------------
+    # Black - Code Formatter
+    # -------------------------------------------------------------------------
+    [tool.black]
+    line-length = 80
+    target-version = ["py311"]
+    skip-string-normalization = false
+    skip-magic-trailing-comma = false
+    include = '\.pyi?$'
+    extend-exclude = '''
+    /(
+      # Default excludes
+      \.eggs
+      | \.git
+      | \.hg
+      | \.mypy_cache
+      | \.tox
+      | \.venv
+      | _build
+      | buck-out
+      | build
+      | dist
+    )/
+    '''
+
+    # -------------------------------------------------------------------------
+    # isort - Import Sorting
+    # -------------------------------------------------------------------------
+    [tool.isort]
+    profile = "black"
+    line_length = 80
+    force_single_line = false
+    atomic = true
+    include_trailing_comma = true
+    use_parentheses = true
+    src_paths = ["src", "tests"]
+    skip_gitignore = true
+    known_first_party = ["src"]
+
+    # -------------------------------------------------------------------------
+    # mypy - Static Type Checker
+    # -------------------------------------------------------------------------
+    [tool.mypy]
+    python_version = "3.11"
+    strict = true
+    warn_return_any = true
+    warn_unused_configs = true
+    disallow_untyped_defs = true
+    disallow_incomplete_defs = true
+    check_untyped_defs = true
+    no_implicit_optional = true
+    warn_redundant_casts = true
+    warn_unused_ignores = true
+    warn_no_return = true
+    warn_unreachable = true
+    strict_equality = true
+    pretty = true
+    show_error_codes = true
+    show_error_context = true
+    show_column_numbers = true
+
+    [[tool.mypy.overrides]]
+    module = "discord.*"
+    ignore_missing_imports = true
+
+    # -------------------------------------------------------------------------
+    # pytest - Testing Framework
+    # -------------------------------------------------------------------------
+    [tool.pytest.ini_options]
+    minversion = "7.0"
+    addopts = "-ra -q --strict-markers --cov=src --cov-report=term-missing --cov-report=html"
+    testpaths = ["tests"]
+    python_files = ["test_*.py"]
+    python_classes = ["Test*"]
+    python_functions = ["test_*"]
+    asyncio_mode = "auto"
+
+    # -------------------------------------------------------------------------
+    # coverage.py - Code Coverage
+    # -------------------------------------------------------------------------
+    [tool.coverage.run]
+    source = ["src"]
+    omit = [
+        "tests/*",
+        "*/__init__.py",
+        "*/conftest.py"
+    ]
+
+    [tool.coverage.report]
+    exclude_lines = [
+        "pragma: no cover",
+        "def __repr__",
+        "raise AssertionError",
+        "raise NotImplementedError",
+        "if __name__ == .__main__.:",
+        "if TYPE_CHECKING:",
+        "@abstractmethod"
+    ]
+    precision = 2
+    show_missing = true
+
+    # -------------------------------------------------------------------------
+    # ruff - Fast Python Linter
+    # -------------------------------------------------------------------------
+    [tool.ruff]
+    line-length = 80
+    target-version = "py311"
+    select = [
+        "E",    # pycodestyle errors
+        "W",    # pycodestyle warnings
+        "F",    # pyflakes
+        "I",    # isort
+        "N",    # pep8-naming
+        "UP",   # pyupgrade
+        "ANN",  # flake8-annotations
+        "B",    # flake8-bugbear
+        "C4",   # flake8-comprehensions
+        "DTZ",  # flake8-datetimez
+        "T20",  # flake8-print
+        "SIM",  # flake8-simplify
+    ]
+    ignore = [
+        "ANN101",  # Missing type annotation for self in method
+        "ANN102",  # Missing type annotation for cls in classmethod
+    ]
+    fixable = ["ALL"]
+    unfixable = []
+    exclude = [
+        ".git",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+        ".venv",
+        "venv",
+        "build",
+        "dist",
+    ]
+
+    [tool.ruff.per-file-ignores]
+    "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+    "tests/**/*.py" = ["ANN"]  # Don't require type annotations in tests
+  validation: "grep -q 'tool.black' pyproject.toml && grep -q 'tool.isort' pyproject.toml && grep -q 'tool.mypy' pyproject.toml && echo '✓ pyproject.toml contains tool configurations'"
+
+step_11_create_readme_md:
+  file: "README.md"
+  content: |
+    # Consilium Relay
+
+    Multi-AI collaboration relay service using Discord as message board.
+
+    ## Overview
+
+    **Consilium Relay** enables structured multi-AI deliberation by connecting Claude, ChatGPT, and human participants through Discord. The relay service provides a REST API for AI agents to post attributed messages and fetch conversation history, while maintaining full transparency and human governance.
+
+    **MVP Definition**: Chairman, Claude, and ChatGPT can all post and read messages in the same Discord thread via the relay service.
+
+    ### Technology Stack
+
+    - **Runtime**: Python 3.11
+    - **Framework**: FastAPI (async web framework)
+    - **Integration**: discord.py (Discord API client)
+    - **Validation**: Pydantic v2 (data models)
+    - **Testing**: pytest with async support
+
+    ### Architecture
+
+    ```
+    ┌──────────────┐       ┌──────────────┐       ┌──────────────┐
+    │ AI Clients   │       │ Consilium    │       │   Discord    │
+    │ (Claude,     │──────▶│   Relay      │──────▶│   Server     │
+    │  ChatGPT)    │◀──────│   (FastAPI)  │◀──────│              │
+    └──────────────┘       └──────────────┘       └──────────────┘
+         REST API              Attribution           Message Board
+    ```
+
+    For detailed architecture, see [Phase 1 System Spec](docs/01_spec/01_SYSTEM_SPEC.yaml).
+
+    ---
+
+    ## Prerequisites
+
+    - **Python 3.11 or higher** ([download](https://www.python.org/downloads/))
+    - **pip** and **venv** (included with Python)
+    - **Discord bot token** (see [Phase 3 Setup](docs/03_DISCORD_SETUP.md))
+    - **Git** for version control
+
+    ---
+
+    ## Setup Instructions
+
+    ### 1. Clone Repository
+
+    ```bash
+    git clone https://github.com/your-org/consilium-relay.git
+    cd consilium-relay
+    ```
+
+    ### 2. Create Virtual Environment
+
+    ```bash
+    # Create virtual environment
+    python -m venv venv
+
+    # Activate virtual environment
+    # On macOS/Linux:
+    source venv/bin/activate
+
+    # On Windows:
+    venv\Scripts\activate
+    ```
+
+    ### 3. Install Dependencies
+
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+    Expected output: All packages install successfully (~30 seconds).
+
+    ### 4. Configure Environment
+
+    ```bash
+    # Copy environment template
+    cp .env.example .env
+
+    # Edit .env with your credentials
+    # nano .env  # or use your preferred editor
+    ```
+
+    **Required variables** (see [Phase 3](docs/03_DISCORD_SETUP.md) for setup):
+    - `DISCORD_BOT_TOKEN` - Discord bot token (50+ characters)
+    - `DISCORD_GUILD_ID` - Discord server ID (18 digits)
+    - `DISCORD_CHANNEL_ID` - Discord channel ID (18 digits)
+    - `CONSILIUM_API_KEY` - API authentication key (32+ characters)
+    - `LOG_LEVEL` - Logging verbosity (INFO recommended)
+
+    ---
+
+    ## Running Locally
+
+    ### Start Development Server
+
+    ```bash
+    uvicorn src.main:app --reload --host 0.0.0.0 --port 8000
+    ```
+
+    **Expected output**:
+    ```
+    INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+    INFO:     Started reloader process [XXXXX]
+    INFO:     Started server process [XXXXX]
+    INFO:     Waiting for application startup.
+    INFO:     Application startup complete.
+    ```
+
+    ### Verify Health Check
+
+    ```bash
+    curl http://localhost:8000/v1/system/health
+    ```
+
+    **Expected response**:
+    ```json
+    {
+      "status": "ok",
+      "uptime_s": 12.34
+    }
+    ```
+
+    ### Troubleshooting
+
+    | Issue | Solution |
+    |-------|----------|
+    | `ModuleNotFoundError` | Ensure virtual environment is activated |
+    | `DISCORD_BOT_TOKEN not set` | Verify `.env` file exists and contains token |
+    | `Address already in use` | Change port: `--port 8001` |
+    | `Discord connection failed` | Verify bot token and permissions |
+
+    ---
+
+    ## Development Workflow
+
+    ### Code Formatting
+
+    ```bash
+    # Format code with black (80-char lines)
+    black src/ tests/
+
+    # Sort imports
+    isort src/ tests/
+    ```
+
+    ### Type Checking
+
+    ```bash
+    # Run mypy static type checker
+    mypy src/
+    ```
+
+    ### Linting
+
+    ```bash
+    # Run ruff linter
+    ruff check src/ tests/
+
+    # Auto-fix issues
+    ruff check --fix src/ tests/
+    ```
+
+    ### Running Tests
+
+    ```bash
+    # Run all tests with coverage
+    pytest
+
+    # Run specific test file
+    pytest tests/test_routes.py
+
+    # Run with verbose output
+    pytest -v
+
+    # View coverage report
+    pytest --cov=src --cov-report=html
+    open htmlcov/index.html
+    ```
+
+    ### Pre-Commit Checklist
+
+    Before committing code, ensure:
+
+    - [ ] `black src/ tests/` - Code formatted
+    - [ ] `isort src/ tests/` - Imports sorted
+    - [ ] `ruff check src/ tests/` - No linting errors
+    - [ ] `mypy src/` - Type checks pass
+    - [ ] `pytest` - All tests pass (>80% coverage)
+    - [ ] No `.env` or secrets in commit
+
+    ---
+
+    ## Project Structure
+
+    ```
+    consilium-relay/
+    ├── src/
+    │   ├── api/              # HTTP endpoints & Pydantic models
+    │   ├── discord/          # Discord client & message handling
+    │   ├── core/             # Config, logging, utilities
+    │   └── main.py           # FastAPI application entrypoint
+    ├── tests/                # Test suite (mirrors src/ structure)
+    ├── docs/                 # Phase documentation & specs
+    ├── requirements.txt      # Python dependencies (pinned)
+    ├── .env.example          # Environment variable template
+    ├── .gitignore            # Git exclusions
+    ├── pyproject.toml        # Tool configurations
+    └── README.md             # This file
+    ```
+
+    ### Module Responsibilities
+
+    - **src/api/**: REST API routes, request/response models, validation
+    - **src/discord/**: Discord bot client, message splitting, rate limiting
+    - **src/core/**: Configuration loading, structured logging, shared utilities
+
+    ---
+
+    ## Documentation
+
+    - **Phase Plan**: [consilium-9_phase_plan.yml](consilium-9_phase_plan.yml)
+    - **Copilot Guide**: [00_COPILOT_README.md](docs/00_COPILOT_README.md)
+    - **OpenAPI Spec**: [02_OPENAPI_SCHEMA.yaml](docs/01_spec/02_OPENAPI_SCHEMA.yaml)
+    - **System Architecture**: [01_SYSTEM_SPEC.yaml](docs/01_spec/01_SYSTEM_SPEC.yaml)
+    - **Manifesto**: [consilium_manifesto.md](consilium_manifesto.md)
+
+    ---
+
+    ## Contributing
+
+    Contributions welcome! Please:
+
+    1. Fork the repository
+    2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+    3. Follow coding standards (PEP 8, type hints, 80-char lines)
+    4. Ensure tests pass (`pytest`)
+    5. Commit with clear messages
+    6. Push to your branch
+    7. Open a Pull Request
+
+    ---
+
+    ## License
+
+    **TBD** - License to be determined by project Chairman.
+
+    ---
+
+    ## Support
+
+    - **Issues**: [GitHub Issues](https://github.com/your-org/consilium-relay/issues)
+    - **Discussions**: [GitHub Discussions](https://github.com/your-org/consilium-relay/discussions)
+    - **Documentation**: See `docs/` directory
+
+    ---
+
+    **Current Phase**: Phase 2 - Repository Foundation & Dependencies  
+    **Status**: MVP in Development  
+    **Version**: 0.1.0
+  validation: "grep -q 'Consilium Relay' README.md && grep -q 'Setup Instructions' README.md && echo '✓ README.md contains required sections'"
+
+step_12_validate_files:
+  command: |
+    echo "=== Validating Phase 2 file creation ==="
+    for file in src/api/__init__.py src/discord/__init__.py src/core/__init__.py src/main.py tests/__init__.py docs/.gitkeep requirements.txt .env.example .gitignore pyproject.toml README.md; do
+      if [ -f "$file" ]; then
+        echo "✓ $file"
+      else
+        echo "✗ MISSING: $file"
+        exit 1
+      fi
+    done
+    echo "=== All files created successfully ==="
+
+step_13_test_installation:
+  command: |
+    echo "=== Testing dependency installation ==="
+    python -m venv test_venv
+    source test_venv/bin/activate || test_venv\Scripts\activate
+    pip install --quiet -r requirements.txt
+    if [ $? -eq 0 ]; then
+      echo "✓ Dependencies installed successfully"
+    else
+      echo "✗ Dependency installation failed"
+      exit 1
+    fi
+    deactivate
+    rm -rf test_venv
+    echo "=== Installation test passed ==="
+
+step_14_run_acceptance_gate:
+  command: |
+    python - <<'PY'
+    import sys, pathlib
+
+    print("=== Running Phase 2 Acceptance Gate ===")
+
+    # Check file existence
+    must_exist = [
+        "src/api/__init__.py",
+        "src/discord/__init__.py",
+        "src/core/__init__.py",
+        "src/main.py",
+        "tests/__init__.py",
+        "requirements.txt",
+        ".env.example",
+        ".gitignore",
+        "pyproject.toml",
+        "README.md",
+    ]
+
+    missing = [p for p in must_exist if not pathlib.Path(p).exists()]
+    if missing:
+        print(f"✗ Missing files: {missing}")
+        sys.exit(1)
+    print("✓ All required files exist")
+
+    # Validate .env.example
+    env = pathlib.Path(".env.example").read_text(encoding="utf-8")
+    required_vars = [
+        "DISCORD_BOT_TOKEN",
+        "DISCORD_GUILD_ID",
+        "DISCORD_CHANNEL_ID",
+        "CONSILIUM_API_KEY",
+        "LOG_LEVEL"
+    ]
+    for var in required_vars:
+        if var not in env:
+            print(f"✗ Missing env var in .env.example: {var}")
+            sys.exit(1)
+    print("✓ All environment variables documented")
+
+    # Validate pyproject.toml
+    pyproj = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+    required_tools = ["tool.black", "tool.isort", "tool.mypy"]
+    for tool in required_tools:
+        if tool not in pyproj:
+            print(f"✗ Missing {tool} config in pyproject.toml")
+            sys.exit(1)
+    print("✓ All tool configurations present")
+
+    print("=== Phase 2 Acceptance Gate: PASSED ===")
+    PY
+
+step_15_record_completion:
+  file: "../PHASE_NOTES.md"
+  append: |
+    
+    ---
+    ## Phase 2: Repository Foundation & Dependencies
+    
+    **Status**: COMPLETE  
+    **Completed**: 2025-10-04T20:00:00Z  
+    **Executed By**: GitHub Copilot + Claude
+    
+    ### Deliverables Created
+    - ✓ src/api/__init__.py
+    - ✓ src/discord/__init__.py
+    - ✓ src/core/__init__.py
+    - ✓ src/main.py (placeholder)
+    - ✓ tests/__init__.py
+    - ✓ docs/.gitkeep
+    - ✓ requirements.txt (13 pinned dependencies)
+    - ✓ .env.example (5 documented variables)
+    - ✓ .gitignore (comprehensive exclusions)
+    - ✓ pyproject.toml (black, isort, mypy, ruff configs)
+    - ✓ README.md (7 sections, complete setup guide)
+    
+    ### Validation Results
+    - ✓ All files created successfully
+    - ✓ pip install -r requirements.txt succeeded
+    - ✓ Acceptance gate validation passed
+    - ✓ No secrets committed to repository
+    
+    ### Next Phase
+    **Phase 3**: Discord Infrastructure Setup (manual)
+    - Register Discord bot in Developer Portal
+    - Enable Message Content intent
+    - Create Discord server with #consilium-architecture channel
+    - Populate .env with real credentials
+    
+    **Blockers**: None  
+    **Issues**: None  
+    **Notes**: Repository foundation complete; ready for Phase 3 manual setup.

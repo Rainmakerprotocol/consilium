@@ -1,0 +1,103 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_01_implementation"
+doc_title: "Phase 1 — System Specifications & Interface Contracts — Implementation"
+phase_id: "phase_01"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T17:05:00Z"
+last_updated_utc: "2025-10-04T17:05:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+cross_doc_relationship:
+  consumes: ["./phase_01_BLUEPRINT.yaml", "./phase_01_ARCHITECTURE.yaml", "../00_parent/00_COPILOT_README.md"]
+  produces: ["../01_spec/01_SYSTEM_SPEC.yaml", "../01_spec/02_OPENAPI_SCHEMA.yaml", "../01_spec/03_DATA_MODELS.md"]
+  updates: ["../PHASE_NOTES.md", "../TECHNICAL_DECISIONS.md"]
+---
+
+copilot_instructions: |
+  1. Purpose: Enumerate concrete steps, commands, and artifacts to produce all Phase 1 deliverables.
+  2. Voice: Use imperative steps ("Create file X", "Define schema Y").
+  3. Tense policy: After CI Gate passes, convert steps to past tense and set status COMPLETE.
+  4. Outputs: Must match exactly the file paths in `sections.outputs`.
+  5. Evidence: Provide post-step validation using `openapi-spec-validator` and simple assertions.
+  6. Source of truth: OpenAPI v1.1 is canonical; do not drift from the contract.
+  7. No code generation in this phase; only specifications and contracts.
+
+sections:
+  steps:
+    - "Create docs/01_spec/01_SYSTEM_SPEC.yaml with: Component architecture, data-flow diagrams (request→processing→response), and integration points (Discord API, AI clients)."
+    - "Create docs/01_spec/02_OPENAPI_SCHEMA.yaml (OpenAPI 3.0.3) including: servers, tags, ApiKey security (header: X-Consilium-Api-Key), and all required paths."
+    - "In the schema, include /v1/system/health and /v1/system/info (System tag)."
+    - "In the schema, include /v1/strategy/start-thread, /v1/strategy/post, /v1/strategy/fetch (Strategy tag) with request/response bodies and examples."
+    - "Define components/schemas exactly: HealthResponse, InfoResponse, StartThreadRequest/Response, PostMessageRequest/Response, FetchMessagesResponse, Message, Author, Error."
+    - "Model headers: X-Idempotency-Key (request, optional on POST /v1/strategy/post), X-RateLimit-Remaining (response header), Retry-After (429 and 202 cases)."
+    - "Create docs/01_spec/03_DATA_MODELS.md: Pydantic model mapping table for each schema (fields, constraints, examples of valid/invalid payloads)."
+    - "Ensure examples in request/response bodies validate against schemas (strict types, enums, formats)."
+    - "Run openapi-spec-validator on the schema and resolve all errors."
+    - "Record any key decisions in ../TECHNICAL_DECISIONS.md and cross-link from Phase Notes."
+  outputs:
+    - "docs/01_spec/01_SYSTEM_SPEC.yaml"
+    - "docs/01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "docs/01_spec/03_DATA_MODELS.md"
+  post_validation:
+    commands: |
+      openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      python - <<'PY'
+      import sys, pathlib
+      # Simple presence and content checks (non-exhaustive) for MVP
+      schema = pathlib.Path('docs/01_spec/02_OPENAPI_SCHEMA.yaml').read_text(encoding='utf-8')
+      required_snippets = [
+          '/v1/system/health',
+          '/v1/system/info',
+          '/v1/strategy/start-thread',
+          '/v1/strategy/post',
+          '/v1/strategy/fetch',
+          'X-Consilium-Api-Key',
+          'HealthResponse',
+          'InfoResponse',
+          'StartThreadRequest',
+          'StartThreadResponse',
+          'PostMessageRequest',
+          'PostMessageResponse',
+          'FetchMessagesResponse',
+          'Message:',
+          'Author:',
+          'Error:',
+      ]
+      missing = [s for s in required_snippets if s not in schema]
+      sys.exit(1 if missing else 0)
+      PY
+    expected: "Validator returns success; presence checks pass (exit code 0)."
+
+  contract:
+    purpose: "Define and freeze Consilium Relay system specification and API contracts for Phase 1, enabling later phases to implement endpoints and Discord integration without ambiguity."
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../consilium_manifesto.md"
+    outputs:
+      - "../01_spec/01_SYSTEM_SPEC.yaml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "../01_spec/03_DATA_MODELS.md"
+    acceptance:
+      ci_gate: |
+        openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      expected: "OpenAPI schema validates with no errors; all referenced schemas are defined."
+    rollback: "git checkout -- docs/01_spec/"
+
+  ci_gate:
+    commands: |
+      openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+    expected: "OpenAPI schema validates successfully."
+
+  rollback_procedure:
+    - "Revert changed spec files: git checkout -- docs/01_spec/"
+    - "If necessary, reset to the last passing commit."

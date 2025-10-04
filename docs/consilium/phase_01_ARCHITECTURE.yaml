@@ -1,0 +1,367 @@
+Here’s the cleaned, template-conformant Phase 1 Architecture file. I corrected module paths (core logic → `src/discord/message_handler.py`), aligned data-model notes with the OpenAPI contract (no over-constraining regex), and added the missing `module_map` and `non_functional_requirements` sections from the template while preserving your intent.
+
+
+
+```yaml
+---
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: "phase_01_architecture"
+doc_title: "Phase 1 — System Specifications & Interface Contracts — Architecture"
+phase_id: "phase_01"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T15:30:00Z"
+last_updated_utc: "2025-10-04T15:30:00Z"
+blueprint_path: "./phase_01_BLUEPRINT.yaml"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, technical_leads]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes: ["phase_01_BLUEPRINT.yaml", "00_TECHNICAL_CONSTRAINTS.md", "00_AI_AGENT_RULES.md"]
+  produces: ["phase_01_IMPLEMENTATION.yaml"]
+  updates: ["TECHNICAL_DECISIONS.md", "PHASE_NOTES.md"]
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define HOW to implement the Phase 1 Blueprint requirements.
+  2. Read order: Blueprint → Technical Constraints → AI Agent Rules → This Architecture.
+  3. Conformance: Public interfaces MUST match the canonical OpenAPI v1.1 spec.
+  4. Documentation: Use precise module paths, function signatures, and schema mappings.
+  5. Tense: Future tense while DRAFT; convert to past tense when COMPLETE.
+  6. Validation: Design must satisfy all Blueprint success criteria.
+  7. Authority: Blueprint overrides this if conflict; this overrides Implementation.
+
+design_philosophy: >
+  Schema-first design with OpenAPI v1.1 as the canonical contract. The relay will
+  be stateless, async-first, and Discord-centric. Validation occurs at the schema
+  layer (Pydantic v2 models) before business logic executes.
+
+key_design_decisions:
+  - decision: "OpenAPI v1.1 as single source of truth"
+    rationale: "Prevents drift; enables contract testing; self-documenting API"
+    alternatives_considered: ["Code-first spec generation", "Separate API docs"]
+    tradeoffs: "Spec must be updated before code; consistency improves long-term"
+    record_in_technical_decisions: true
+
+  - decision: "Pydantic v2 for data validation"
+    rationale: "Tight FastAPI integration; JSON Schema export; explicit typing"
+    alternatives_considered: ["Marshmallow", "attrs/cattrs", "dataclasses + manual"]
+    tradeoffs: "Stricter validation can reject edge cases"
+    record_in_technical_decisions: true
+
+  - decision: "Attribution via Discord embed footer"
+    rationale: "Keeps message body clean; attribution is metadata"
+    alternatives_considered: ["Inline prefixes", "Separate attribution thread"]
+    tradeoffs: "Discord-specific; portability step needed if adding other UIs"
+    record_in_technical_decisions: true
+
+sections:
+
+  module_map: |
+    src/
+      api/
+        models.py
+        routes.py
+      discord/
+        client.py
+        message_handler.py
+      core/
+        config.py
+        logging.py
+      main.py
+
+  interfaces:
+    rest_endpoints:
+      - path: /v1/strategy/start-thread
+        handler: "api.routes.start_thread()"
+      - path: /v1/strategy/post
+        handler: "api.routes.post_message()"       # honors X-Idempotency-Key
+      - path: /v1/strategy/fetch
+        handler: "api.routes.fetch_messages()"
+      - path: /v1/system/health
+        handler: "api.routes.health()"
+      - path: /v1/system/info
+        handler: "api.routes.info()"
+
+    internal_apis:
+      - "discord.message_handler.split_message(content: str, max_length: int = 2000) -> list[str]"
+      - "discord.message_handler.enqueue_send(thread_id: str, chunks: list[str], attribution: dict) -> None"
+      - "discord.client.DiscordClient.create_thread(title: str, seed_message: str | None = None) -> dict"
+      - "discord.client.DiscordClient.send_message(thread_id: str, content: str, author: Author, reply_to: str | None = None) -> list[str]"
+      - "discord.client.DiscordClient.fetch_messages(thread_id: str, after: datetime | None = None, limit: int = 50) -> list[Message]"
+
+  non_functional_requirements:
+    - "Idempotency support on POST /v1/strategy/post via X-Idempotency-Key"
+    - "Respect Retry-After; never busy-spin under rate limits"
+    - "80-char lines; explicit type hints; Google-style docstrings"
+    - "Structured JSON logging with request IDs"
+
+system_architecture:
+  component_diagram: |
+    ┌────────────────────────────────────────────────────────────┐
+    │                    Consilium Relay API                      │
+    │                      (FastAPI + Uvicorn)                    │
+    ├─────────────────┬──────────────────┬───────────────────────┤
+    │  API Routes     │  Core Logic      │  Discord Integration  │
+    │  (/v1/*)        │  (validation &   │  (discord.py client)  │
+    │                 │   attribution)   │                       │
+    └─────────────────┴──────────────────┴───────────────────────┘
+           │                   │                     │
+           ▼                   ▼                     ▼
+       Pydantic          Error Handler          Discord API
+       Validators        (structured logs)      (rate-limited)
+
+  components:
+    - name: "API Routes Layer"
+      purpose: "HTTP endpoint handlers for /v1/system and /v1/strategy"
+      module: "src/api/routes.py"
+      dependencies: ["Pydantic models", "Discord client", "Config loader"]
+      responsibilities:
+        - "Parse and validate incoming HTTP requests"
+        - "Invoke business logic (splitting, queuing, attribution)"
+        - "Format responses per OpenAPI schema; map errors to HTTP"
+        - "Honor X-Idempotency-Key; expose rate-limit headers"
+      public_interface:
+        language: "python"
+        example: |
+          @router.post("/post", response_model=PostMessageResponse, status_code=201)
+          async def post_message(
+              request: PostMessageRequest,
+              idempotency_key: str | None = Header(default=None, alias="X-Idempotency-Key"),
+              ok: bool = Depends(verify_api_key),
+              client: IDiscordClient = Depends(get_discord_client)
+          ) -> PostMessageResponse:
+              # Delegate to message handler; return 201 or 202 based on enqueue outcome.
+              ...
+
+    - name: "Core Logic Layer"
+      purpose: "Splitting, attribution, and queuing"
+      module: "src/discord/message_handler.py"
+      dependencies: ["Pydantic models", "Discord rate-limit knowledge"]
+      responsibilities:
+        - "Split messages >2000 chars, preserving code fences"
+        - "Generate attribution embed metadata"
+        - "Queue messages to comply with rate limits"
+      public_interface:
+        language: "python"
+        example: |
+          async def split_message(content: str, max_length: int = 2000) -> list[str]: ...
+          def create_attribution_embed(author: Author) -> dict: ...
+          async def enqueue_send(thread_id: str, chunks: list[str], attribution: dict) -> None: ...
+
+    - name: "Discord Integration Layer"
+      purpose: "Async Discord API client for thread/message ops"
+      module: "src/discord/client.py"
+      dependencies: ["discord.py", "env config"]
+      responsibilities:
+        - "Connect/manage gateway; create threads; send/fetch messages"
+        - "Apply attribution embeds; propagate Discord errors"
+        - "Surface rate-limit info for 202 responses"
+      public_interface:
+        language: "python"
+        example: |
+          class DiscordClient(IDiscordClient):
+              async def create_thread(self, title: str, seed_message: str | None = None) -> dict: ...
+              async def send_message(self, thread_id: str, content: str, author: Author, reply_to: str | None = None) -> list[str]: ...
+              async def fetch_messages(self, thread_id: str, after: datetime | None = None, limit: int = 50) -> list[Message]: ...
+
+data_models:
+  overview: >
+    Pydantic v2 models in src/api/models.py map field-for-field to OpenAPI v1.1
+    components. Do not add/remount fields beyond the spec; additional validation
+    may be implemented via Pydantic validators without changing the public schema.
+
+  model_specifications:
+    - name: "Author"
+      module: "src/api/models.py"
+      openapi_mapping: "#/components/schemas/Author"
+      notes: "agent, model, run_id — strings; attribution only."
+
+    - name: "PostMessageRequest"
+      module: "src/api/models.py"
+      openapi_mapping: "#/components/schemas/PostMessageRequest"
+      notes: "thread_id, author, content; mode ['plain','embed']; optional reply_to."
+
+    - name: "PostMessageResponse"
+      module: "src/api/models.py"
+      openapi_mapping: "#/components/schemas/PostMessageResponse"
+      notes: "status in {'created','accepted'}; message_ids[]; scheduled_at? (202)."
+
+    - name: "FetchMessagesResponse"
+      module: "src/api/models.py"
+      openapi_mapping: "#/components/schemas/FetchMessagesResponse"
+      notes: "thread_id; messages[] of Message; next_after_ts?."
+
+    - name: "Message"
+      module: "src/api/models.py"
+      openapi_mapping: "#/components/schemas/Message"
+      notes: "id, ts (datetime), author, content; optional reply_to, embeds."
+
+data_flow:
+  flow_specifications:
+    - flow_name: "POST /v1/strategy/post → Discord"
+      sequence:
+        - "Validate request (Pydantic) & API key; capture X-Idempotency-Key if provided"
+        - "Split content (>2000) preserving code fences"
+        - "Queue or send based on rate-limit window"
+        - "Attach attribution embed and send via Discord client"
+        - "Return 201 with message_ids or 202 with scheduled_at"
+
+    - flow_name: "GET /v1/strategy/fetch"
+      sequence:
+        - "Validate query params (thread_id, after_ts?, limit)"
+        - "Fetch from Discord; normalize to Message schema"
+        - "Return 200 with messages and next_after_ts cursor"
+
+error_handling_strategy:
+  exception_hierarchy:
+    base_exception: "ConsiliumError(Exception)"
+    derived_exceptions:
+      - { name: "ValidationError",      http_code: 400 }
+      - { name: "AuthenticationError",  http_code: 401 }
+      - { name: "ThreadNotFoundError",  http_code: 404 }
+      - { name: "RateLimitError",       http_code: 429 }
+      - { name: "DiscordAPIError",      http_code: 503 }
+
+  logging_strategy:
+    levels:
+      - level: "INFO"
+        events: ["HTTP requests", "Successful Discord ops", "Client 4xx"]
+      - level: "ERROR"
+        events: ["5xx errors", "Discord failures", "Unhandled exceptions"]
+    request_id: "Generate UUID per request; include in all log contexts"
+
+interface_contracts:
+  - interface_name: "IDiscordClient"
+    purpose: "Abstraction for Discord operations; enables mocking"
+    implementers: ["DiscordClient (real)", "MockDiscordClient (tests)"]
+    contract:
+      language: "python"
+      code: |
+        class IDiscordClient(ABC):
+            @abstractmethod
+            async def create_thread(self, title: str, seed_message: str | None = None) -> dict: ...
+            @abstractmethod
+            async def send_message(self, thread_id: str, content: str, author: Author, reply_to: str | None = None) -> list[str]: ...
+            @abstractmethod
+            async def fetch_messages(self, thread_id: str, after: datetime | None = None, limit: int = 50) -> list[Message]: ...
+
+performance_considerations:
+  response_time_targets:
+    - { operation: "GET /v1/system/health", target_ms: 50 }
+    - { operation: "POST /v1/strategy/post (immediate)", target_ms: 200 }
+    - { operation: "POST /v1/strategy/post (queued)", target_ms: 50 }
+    - { operation: "GET /v1/strategy/fetch", target_ms: 500 }
+
+  optimization_strategy:
+    mvp_optimizations:
+      - "Async everywhere (FastAPI + discord.py)"
+      - "Reuse aiohttp sessions (connection pooling)"
+      - "In-memory token-bucket rate limiter"
+    post_mvp_deferred:
+      - "Redis-backed rate limiter for horizontal scale"
+      - "MQ for workers (Redis/RabbitMQ)"
+      - "Caching layer for hot threads"
+
+security_architecture:
+  authentication:
+    mechanism: "X-Consilium-Api-Key header"
+    implementation_notes:
+      - "Compare against CONSILIUM_API_KEY env var using constant-time comparison"
+      - "Never log secrets; fail fast on missing values"
+  input_validation:
+    layers:
+      - "Pydantic model validation"
+      - "Custom validators for business rules"
+      - "Contract tests vs OpenAPI v1.1"
+  secrets_management:
+    mvp_approach: "Env vars via python-dotenv; .env is .gitignored"
+    required_secrets:
+      - "DISCORD_BOT_TOKEN (50+ chars)"
+      - "CONSILIUM_API_KEY"
+      - "DISCORD_GUILD_ID (18-digit)"
+      - "DISCORD_CHANNEL_ID (18-digit)"
+
+testing_strategy:
+  test_pyramid:
+    - level: "Schema/Contract"
+      purpose: "Pydantic models match OpenAPI definitions"
+      tools: ["openapi-spec-validator", "pytest"]
+    - level: "Unit"
+      purpose: "split_message, attribution, rate-limit helpers"
+      tools: ["pytest", "pytest-asyncio"]
+    - level: "Integration"
+      purpose: "Routes with mocked Discord client"
+      tools: ["FastAPI TestClient", "pytest-mock"]
+  test_organization:
+    - { test_file: "tests/test_models.py", purpose: "Model + schema parity" }
+    - { test_file: "tests/test_message_handler.py", purpose: "Splitting/attribution" }
+    - { test_file: "tests/test_discord_client.py", purpose: "Client behaviors" }
+    - { test_file: "tests/test_routes.py", purpose: "Endpoint flows" }
+
+deployment_architecture:
+  target_platform:
+    name: "Railway / Fly.io / Render"
+    rationale: "Simple managed platform with Docker support"
+  environment_variables:
+    - "DISCORD_BOT_TOKEN"
+    - "DISCORD_GUILD_ID"
+    - "DISCORD_CHANNEL_ID"
+    - "CONSILIUM_API_KEY"
+    - "LOG_LEVEL=INFO"
+  health_checks:
+    endpoint: "GET /v1/system/health"
+    success_criteria: '200 and {"status":"ok","uptime_s":N}'
+    failure_handling: "Restart after 3 consecutive failures"
+
+acceptance_criteria:
+  architecture_complete_when:
+    - "Every Blueprint requirement has a corresponding design section"
+    - "All data models map exactly to OpenAPI v1.1"
+    - "Interfaces fully typed with docstrings"
+    - "Error handling covers all failure modes"
+    - "Testing strategy defined across layers"
+    - "No TBD/TODO markers remain"
+    - "TECHNICAL_DECISIONS.md updated with key decisions"
+    - "Converted to past tense with status=COMPLETE"
+
+links_and_references:
+  phase_documents:
+    blueprint: "./phase_01_BLUEPRINT.yaml"
+    implementation: "./phase_01_IMPLEMENTATION.yaml"
+    phase_plan: "../consilium-9_phase_plan.yml"
+  source_of_truth:
+    openapi_schema: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    technical_constraints: "../00_project/00_TECHNICAL_CONSTRAINTS.md"
+    ai_agent_rules: "../00_project/00_AI_AGENT_RULES.md"
+  supporting_documentation:
+    phase_notes: "../PHASE_NOTES.md"
+    technical_decisions: "../TECHNICAL_DECISIONS.md"
+    troubleshooting: "../TROUBLESHOOTING_GUIDE.md"
+
+version_history:
+  - version: "0.1.1"
+    date: "2025-10-04T16:10:00Z"
+    changes: "Align module_map; move core logic to src/discord/message_handler.py; add NFRs; tighten interface notes; ensure OpenAPI parity."
+    author: "ChatGPT (AI Assistant)"
+    status: "DRAFT"
+  - version: "0.1.0"
+    date: "2025-10-04T15:30:00Z"
+    changes: "Initial architecture draft"
+    author: "Claude (AI Assistant)"
+    status: "DRAFT"
+```
+
+
+Medical References:
+1. None — DOI: file-Bu76tpfcW3ursmiTUSajM3

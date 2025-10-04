@@ -1,0 +1,73 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "{PHASE_ID}_implementation"
+doc_title: "{DOC_TITLE}"
+phase_id: "{PHASE_ID}"                # e.g. phase_05
+api_version: "v1.1"                     # aligns with OpenAPI spec
+status: "DRAFT"                         # DRAFT | IN_PROGRESS | COMPLETE
+created_utc: "2025-10-03T14:42:45Z"
+last_updated_utc: "2025-10-03T14:42:45Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+cross_doc_relationship:
+  consumes: [blueprint_doc, architecture_doc, phase_0_docs]
+  produces: [code, tests]
+  updates: [phase_notes, technical_decisions]
+---
+
+copilot_instructions: |
+  1. Purpose: Enumerate concrete steps, commands, and code artifacts to produce.
+  2. Voice: Use imperative steps ("Create file X", "Implement function Y").
+  3. Tense policy: After CI Gate passes, convert steps to past tense and set status COMPLETE.
+  4. Outputs: Must match exactly the file paths below.
+  5. Evidence: Provide post-step validation (curl output, HTTP 200, test summaries).
+
+sections:
+  steps:
+    - "Create src/main.py (FastAPI app; mount routes)."
+    - "Create src/core/config.py (pydantic-settings; env vars)."
+    - "Create src/core/logging.py (structured JSON logs)."
+    - "Implement src/api/routes.py endpoints (mock first if Phase-5)."
+    - "Implement src/discord/message_handler.py (split @2000; preserve code fences)."
+    - "Wire /v1/strategy/post to enqueue split sends; handle X-Idempotency-Key."
+    - "Add tests in tests/ mirroring modules."
+  outputs:
+    - "src/main.py"
+    - "src/core/config.py"
+    - "src/core/logging.py"
+    - "src/api/routes.py"
+    - "src/discord/client.py"
+    - "src/discord/message_handler.py"
+    - "tests/test_routes.py"
+    - "tests/test_message_handler.py"
+  post_validation:
+    commands: |
+      curl -sS localhost:8000/v1/system/health | jq .status
+    expected: '"ok"'
+  contract:                      # must be copied from the Blueprint
+    purpose: "<copied>"
+    inputs:
+      - "<copied>"
+    outputs:
+      - "<copied>"
+    acceptance:
+      ci_gate: |
+        ruff . && mypy . && pytest -q
+      expected: "All commands exit with code 0."
+    rollback: "<copied>"
+  ci_gate:
+    commands: |
+      ruff .
+      mypy .
+      pytest -q
+    expected: "All commands exit with code 0."
+  rollback_procedure:
+    - "Revert changed files (list exact paths)."
+    - "If needed, reset to last passing commit."

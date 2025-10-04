@@ -1,0 +1,620 @@
+---
+doc_type: COPILOT_PROMPTS
+template_version: 1.1.0
+prompts_id: "phase_01_copilot_prompts"
+doc_title: "Phase 1 — Copilot Automation Prompts"
+phase_id: "phase_01"
+created_utc: "2025-10-04T16:30:00Z"
+usage: "Copy-paste these prompts into GitHub Copilot Chat to automate Phase 1 implementation"
+---
+
+usage_instructions: |
+  HOW TO USE THESE PROMPTS:
+  
+  1. Open GitHub Copilot Chat in your IDE
+  2. Navigate to the project root directory
+  3. Copy a prompt from this file (including context headers)
+  4. Paste into Copilot Chat
+  5. Review Copilot's output before accepting
+  6. Validate each step before proceeding to next
+  
+  PROMPT FORMAT:
+  Each prompt includes:
+  - Context: What Copilot needs to read first
+  - Task: What to generate/create
+  - Validation: How to verify success
+  
+  BEST PRACTICES:
+  - Run prompts in sequence (Step 1 → 2 → 3 → 4 → 5)
+  - Validate after each step before continuing
+  - If Copilot output is incomplete, re-run with clarification
+  - Keep terminal open to run validation commands
+
+prompts:
+  step_0_environment_setup:
+    prompt_id: "phase_01_step_0"
+    purpose: "Verify environment and install required tools"
+    context_files_to_read:
+      - "phase_01_BLUEPRINT.yaml"
+      - "phase_01_ARCHITECTURE.yaml"
+      - "phase_01_IMPLEMENTATION.yaml"
+    
+    prompt: |
+      # Phase 1 Step 0: Environment Setup
+      
+      ## Context
+      You are implementing Phase 1 of the Consilium Relay project. Phase 1 generates 
+      specification documents (no code). You need to verify the environment has required 
+      tools and create directory structure.
+      
+      Read these files first:
+      - phase_01_IMPLEMENTATION.yaml (implementation steps)
+      - phase_01_ARCHITECTURE.yaml (architecture design)
+      
+      ## Task
+      1. Check if openapi-spec-validator is installed:
+         - If installed, confirm version
+         - If not installed, provide installation command
+      
+      2. Check if yq (YAML processor) is installed:
+         - If installed, confirm version
+         - If not installed, provide installation command for current OS
+      
+      3. Create directory structure:
+         ```
+         mkdir -p docs/01_spec
+         mkdir -p docs/03_data_models
+         ```
+      
+      4. Generate a validation script at scripts/validate_phase_01.sh that:
+         - Validates YAML syntax with yq
+         - Validates OpenAPI schema with openapi-spec-validator
+         - Checks all required files exist
+         - Exits 0 if all checks pass, 1 otherwise
+      
+      ## Validation
+      After generating:
+      - Run: `bash scripts/validate_phase_01.sh`
+      - Expected: Script exists and can run (may fail until files created)
+      
+      ## Output Format
+      Provide:
+      1. Installation commands (if needed)
+      2. Directory creation confirmation
+      3. Complete validation script content
+    
+    validation_after_prompt:
+      - "Test openapi-spec-validator exists: openapi-spec-validator --version"
+      - "Test yq exists: yq --version"
+      - "Verify directories: ls -la docs/01_spec docs/03_data_models"
+      - "Check script: test -f scripts/validate_phase_01.sh"
+
+  step_1_system_spec:
+    prompt_id: "phase_01_step_1"
+    purpose: "Generate SYSTEM_SPEC.yaml with component architecture"
+    context_files_to_read:
+      - "phase_01_ARCHITECTURE.yaml (lines 72-209: system_architecture section)"
+      - "phase_01_IMPLEMENTATION.yaml (step_2 for structure)"
+    
+    prompt: |
+      # Phase 1 Step 1: Generate SYSTEM_SPEC.yaml
+      
+      ## Context
+      Read phase_01_ARCHITECTURE.yaml section: system_architecture (lines 72-209).
+      This contains the component diagram, 3 main components, and their interfaces.
+      
+      Also read phase_01_IMPLEMENTATION.yaml step_2 for the exact file structure.
+      
+      ## Task
+      Create file: docs/01_spec/01_SYSTEM_SPEC.yaml
+      
+      The file must include these sections:
+      
+      1. **Frontmatter** (YAML metadata):
+         - doc_type: SYSTEM_SPECIFICATION
+         - version: "1.0.0"
+         - created_utc: (current ISO timestamp)
+      
+      2. **system_overview**:
+         - name: "Consilium Relay"
+         - purpose: (from Architecture)
+         - mvp_definition: (from Blueprint)
+         - runtime: "Python 3.11"
+         - framework: "FastAPI"
+      
+      3. **component_architecture**:
+         - diagram: (ASCII diagram from Architecture)
+         - components: (all 3 components from Architecture with full details)
+           * API Routes Layer (src/api/routes.py)
+           * Core Logic Layer (src/core/message_handler.py)
+           * Discord Integration Layer (src/discord/client.py)
+      
+      4. **data_flows**:
+         - Copy all 3 flows from Architecture (lines 354-450)
+           * POST Message to Discord
+           * GET Messages from Discord
+           * Create New Thread
+      
+      5. **integration_points**:
+         - Discord API (v10, rate limits, endpoints)
+         - Claude MCP Client (protocol, auth, endpoints)
+         - ChatGPT Custom GPT (protocol, auth, endpoints)
+      
+      6. **deployment_model**:
+         - target_platform, container, orchestration, scaling, monitoring
+      
+      7. **security_model**:
+         - authentication, secrets_management, input_validation
+      
+      ## Quality Requirements
+      - Valid YAML syntax (no syntax errors)
+      - All 3 components must have: name, module, purpose, dependencies, responsibilities, interfaces_exposed
+      - All 3 data flows must have: flow_name, trigger, sequence (with steps)
+      - Each step in sequence must have: step number, actor, action, error_paths
+      
+      ## Validation
+      After generating:
+      ```bash
+      yq eval . docs/01_spec/01_SYSTEM_SPEC.yaml > /dev/null
+      yq eval '.component_architecture.components | length' docs/01_spec/01_SYSTEM_SPEC.yaml
+      yq eval '.data_flows | length' docs/01_spec/01_SYSTEM_SPEC.yaml
+      ```
+      Expected: No errors; 3 components; 3 data flows
+      
+      ## Output Format
+      Generate the complete YAML file content.
+    
+    validation_after_prompt:
+      - "yq eval . docs/01_spec/01_SYSTEM_SPEC.yaml"
+      - "yq eval '.component_architecture.components | length' docs/01_spec/01_SYSTEM_SPEC.yaml  # Should be 3"
+      - "yq eval '.data_flows | length' docs/01_spec/01_SYSTEM_SPEC.yaml  # Should be 3"
+
+  step_2_openapi_validation:
+    prompt_id: "phase_01_step_2"
+    purpose: "Validate existing OpenAPI schema or fix issues"
+    context_files_to_read:
+      - "consilium-openapi-v1.1.yaml (existing OpenAPI spec)"
+      - "phase_01_ARCHITECTURE.yaml (data_models section)"
+    
+    prompt: |
+      # Phase 1 Step 2: Validate/Fix OpenAPI Schema
+      
+      ## Context
+      An OpenAPI v1.1 schema already exists at consilium-openapi-v1.1.yaml.
+      It needs to be copied to docs/01_spec/02_OPENAPI_SCHEMA.yaml and validated.
+      
+      Read:
+      - consilium-openapi-v1.1.yaml (existing schema)
+      - phase_01_ARCHITECTURE.yaml data_models section (lines 211-352)
+      
+      ## Task
+      1. Copy consilium-openapi-v1.1.yaml to docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      
+      2. Validate with openapi-spec-validator:
+         ```bash
+         openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+         ```
+      
+      3. If validation fails:
+         - Identify the specific errors
+         - Fix them in the copied file
+         - Re-validate until it passes
+      
+      4. Verify all required endpoints are present:
+         - GET /v1/system/health
+         - GET /v1/system/info
+         - POST /v1/strategy/start-thread
+         - POST /v1/strategy/post
+         - GET /v1/strategy/fetch
+      
+      5. Verify all required schemas are present:
+         - Author (with fields: agent, model, run_id)
+         - PostMessageRequest
+         - PostMessageResponse
+         - FetchMessagesResponse
+         - Message
+         - Error
+      
+      6. Check that all schemas have 'required' arrays defined
+      
+      ## Quality Requirements
+      - openapi-spec-validator must pass with exit code 0
+      - All 5 endpoints must be documented
+      - All 6 schemas must be present
+      - Error responses must use Error schema
+      
+      ## Validation
+      ```bash
+      openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      yq eval '.paths | keys' docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      yq eval '.components.schemas | keys' docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      ```
+      Expected: Validator passes; 5 paths; 6+ schemas
+      
+      ## Output Format
+      If errors found, provide:
+      1. List of validation errors
+      2. Fixes applied
+      3. Confirmation that validation now passes
+    
+    validation_after_prompt:
+      - "openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "yq eval '.paths | keys | length' docs/01_spec/02_OPENAPI_SCHEMA.yaml  # Should be 5"
+      - "yq eval '.components.schemas.Author.required | length' docs/01_spec/02_OPENAPI_SCHEMA.yaml  # Should be 3"
+
+  step_3_data_models_doc:
+    prompt_id: "phase_01_step_3"
+    purpose: "Generate DATA_MODELS.md with Pydantic specifications"
+    context_files_to_read:
+      - "phase_01_ARCHITECTURE.yaml (data_models section lines 211-352)"
+      - "docs/01_spec/02_OPENAPI_SCHEMA.yaml (schemas)"
+    
+    prompt: |
+      # Phase 1 Step 3: Generate DATA_MODELS.md
+      
+      ## Context
+      Read:
+      - phase_01_ARCHITECTURE.yaml data_models section (lines 211-352)
+        This contains complete Pydantic model definitions
+      - docs/01_spec/02_OPENAPI_SCHEMA.yaml components.schemas
+        Models must match these schemas exactly
+      
+      ## Task
+      Create file: docs/03_DATA_MODELS.md
+      
+      Structure:
+      ```markdown
+      # Consilium Relay — Data Models Specification
+      
+      **Version:** 1.0.0
+      **Created:** [today's date]
+      **OpenAPI Source:** `01_spec/02_OPENAPI_SCHEMA.yaml`
+      
+      ## Overview
+      [Overview paragraph about Pydantic v2 models]
+      
+      ## Model Specifications
+      
+      ### Author
+      **OpenAPI Mapping:** `#/components/schemas/Author`
+      **Module:** `src/api/models.py`
+      **Purpose:** [Purpose]
+      
+      **Pydantic Definition:**
+      ```python
+      [Complete working Pydantic code from Architecture]
+      ```
+      
+      **Validation Rules:**
+      - [Rule 1]
+      - [Rule 2]
+      
+      **Example Valid Payload:**
+      ```json
+      [JSON example]
+      ```
+      
+      **Example Invalid Payloads:**
+      ```json
+      [2-3 examples with ERROR comments]
+      ```
+      
+      ---
+      
+      [Repeat structure for all 6 models:]
+      - Author
+      - PostMessageRequest
+      - PostMessageResponse
+      - FetchMessagesResponse
+      - Message
+      - Error
+      
+      ## Validation Matrix
+      [Table with: Model | Field | Type | Constraints | Validator]
+      
+      ## Implementation Checklist
+      [Checklist for Phase 5 implementation]
+      
+      ## Testing Recommendations
+      [Unit test examples]
+      ```
+      
+      ## Quality Requirements
+      - All 6 models must be documented
+      - Each model must have complete Pydantic code (not pseudocode)
+      - Each model must have 1 valid + 2 invalid examples
+      - Validation matrix must list all fields
+      - Code examples must be syntactically correct Python
+      
+      ## Validation
+      ```bash
+      test -f docs/03_DATA_MODELS.md
+      grep -c "OpenAPI Mapping" docs/03_DATA_MODELS.md  # Should be 6
+      grep -c "Pydantic Definition" docs/03_DATA_MODELS.md  # Should be 6
+      ```
+      
+      ## Output Format
+      Generate the complete Markdown file content (~300-400 lines).
+    
+    validation_after_prompt:
+      - "test -f docs/03_DATA_MODELS.md"
+      - "grep -c 'OpenAPI Mapping' docs/03_DATA_MODELS.md  # Should be 6"
+      - "grep -c '```python' docs/03_DATA_MODELS.md  # Should be at least 6"
+      - "grep -c 'Example Valid Payload' docs/03_DATA_MODELS.md  # Should be 6"
+
+  step_4_final_validation:
+    prompt_id: "phase_01_step_4"
+    purpose: "Run all validation checks and confirm Phase 1 completion"
+    context_files_to_read:
+      - "phase_01_IMPLEMENTATION.yaml (final_validation_command)"
+    
+    prompt: |
+      # Phase 1 Step 4: Final Validation
+      
+      ## Context
+      All Phase 1 deliverables should now exist:
+      - docs/01_spec/01_SYSTEM_SPEC.yaml
+      - docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      - docs/03_DATA_MODELS.md
+      
+      ## Task
+      Create or update: scripts/validate_phase_01.sh
+      
+      The script must:
+      1. Check YAML syntax: yq eval docs/01_spec/01_SYSTEM_SPEC.yaml
+      2. Validate OpenAPI: openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      3. Check file existence (all 3 files)
+      4. Verify component count: yq eval '.component_architecture.components | length >= 3'
+      5. Verify data flow count: yq eval '.data_flows | length >= 2'
+      6. Verify endpoint count: yq eval '.paths | keys | length >= 5'
+      7. Print success message if all pass
+      8. Exit 0 if all pass, 1 if any fail
+      
+      ## Quality Requirements
+      - Script must be executable: chmod +x scripts/validate_phase_01.sh
+      - Script must use `set -e` to exit on first error
+      - Script must provide clear output for each check
+      - Script must print ✅ if all pass or ❌ with details if fail
+      
+      ## Validation
+      Run the script:
+      ```bash
+      bash scripts/validate_phase_01.sh
+      ```
+      
+      Expected output:
+      ```
+      === Phase 1 Final Validation ===
+      → Validating SYSTEM_SPEC.yaml...
+      ✓ YAML valid
+      → Validating OPENAPI_SCHEMA.yaml...
+      ✓ OpenAPI valid
+      → Checking DATA_MODELS.md...
+      ✓ File exists
+      
+      ✅ All Phase 1 deliverables validated successfully!
+      ```
+      
+      Exit code: 0
+      
+      ## Output Format
+      Provide the complete bash script content.
+    
+    validation_after_prompt:
+      - "bash scripts/validate_phase_01.sh"
+      - "echo $?  # Should be 0"
+
+  step_5_documentation_updates:
+    prompt_id: "phase_01_step_5"
+    purpose: "Update PHASE_NOTES.md and convert docs to past tense"
+    context_files_to_read:
+      - "PHASE_NOTES.md (if exists)"
+      - "phase_01_BLUEPRINT.yaml"
+      - "phase_01_ARCHITECTURE.yaml"
+      - "phase_01_IMPLEMENTATION.yaml"
+    
+    prompt: |
+      # Phase 1 Step 5: Documentation Updates
+      
+      ## Context
+      Phase 1 is complete. Need to:
+      1. Update PHASE_NOTES.md with completion entry
+      2. Convert Blueprint/Architecture/Implementation to past tense
+      3. Update status fields to "COMPLETE"
+      
+      ## Task Part 1: Update PHASE_NOTES.md
+      
+      If PHASE_NOTES.md doesn't exist, create it with:
+      ```markdown
+      # Consilium Relay — Phase Notes
+      
+      This file tracks progress and learnings across all phases.
+      
+      ## Phase 1 — System Specifications & Interface Contracts
+      
+      **Status:** ✅ COMPLETE  
+      **Completed:** [today's date ISO format]  
+      **Duration:** [X] hours
+      
+      ### Deliverables Created
+      - ✅ SYSTEM_SPEC.yaml (component architecture)
+      - ✅ OPENAPI_SCHEMA.yaml (API contract v1.1)
+      - ✅ DATA_MODELS.md (Pydantic specifications)
+      
+      ### Key Decisions
+      - OpenAPI v1.1 as single source of truth
+      - YAML for system specs; OpenAPI for API contract
+      - Pydantic v2 for data validation
+      - Discord embed footers for attribution
+      
+      ### Validation Results
+      - ✅ openapi-spec-validator: PASS
+      - ✅ YAML syntax: PASS
+      - ✅ All endpoints documented: 5/5
+      - ✅ All models documented: 6/6
+      
+      ### Blockers Encountered
+      [None / List any issues]
+      
+      ### Learnings
+      [Key insights from this phase]
+      
+      ### Next Phase
+      Phase 2: Repository Foundation & Dependencies
+      ```
+      
+      If it exists, append the Phase 1 entry.
+      
+      ## Task Part 2: Convert Documents to Past Tense
+      
+      Update these 3 files:
+      1. phase_01_BLUEPRINT.yaml
+         - Change status: "COMPLETE"
+         - Convert summary section to past tense:
+           "Phase 1 will define..." → "Phase 1 defined..."
+           "will produce..." → "produced..."
+      
+      2. phase_01_ARCHITECTURE.yaml
+         - Change status: "COMPLETE"
+         - Convert design_philosophy to past tense
+      
+      3. phase_01_IMPLEMENTATION.yaml
+         - Change status: "COMPLETE"
+         - Convert implementation_summary to past tense
+         - Fill actual_time_hours field
+         - Fill completion_date in sign_off section
+      
+      ## Quality Requirements
+      - PHASE_NOTES.md must exist and have Phase 1 entry
+      - All 3 phase docs must have status: "COMPLETE"
+      - All future tense converted to past tense
+      - Timestamps updated
+      
+      ## Validation
+      ```bash
+      grep "status: \"COMPLETE\"" phase_01_BLUEPRINT.yaml
+      grep "status: \"COMPLETE\"" phase_01_ARCHITECTURE.yaml
+      grep "status: \"COMPLETE\"" phase_01_IMPLEMENTATION.yaml
+      grep "Phase 1" PHASE_NOTES.md
+      ```
+      
+      ## Output Format
+      Provide:
+      1. PHASE_NOTES.md content (or addition if exists)
+      2. List of tense changes made in each file
+      3. Confirmation all status fields updated
+    
+    validation_after_prompt:
+      - "test -f PHASE_NOTES.md"
+      - "grep -q 'Phase 1.*COMPLETE' PHASE_NOTES.md"
+      - "grep -q 'status: \"COMPLETE\"' phase_01_BLUEPRINT.yaml"
+      - "grep -q 'status: \"COMPLETE\"' phase_01_ARCHITECTURE.yaml"
+      - "grep -q 'status: \"COMPLETE\"' phase_01_IMPLEMENTATION.yaml"
+
+advanced_prompts:
+  troubleshooting:
+    prompt: |
+      # Troubleshooting Phase 1 Issues
+      
+      ## Context
+      I'm having issues with Phase 1 implementation.
+      
+      Read:
+      - phase_01_IMPLEMENTATION.yaml
+      - scripts/validate_phase_01.sh (if exists)
+      
+      ## Problem
+      [Describe the specific error or issue]
+      
+      ## Task
+      1. Identify the root cause of the issue
+      2. Provide step-by-step fix
+      3. Provide validation command to confirm fix
+      4. Update TROUBLESHOOTING_GUIDE.md with this issue
+      
+      ## Output Format
+      ```markdown
+      ### Issue: [Title]
+      **Symptom:** [What's happening]
+      **Root Cause:** [Why it's happening]
+      **Fix:**
+      [Step-by-step solution]
+      **Validation:**
+      [Command to verify fix]
+      ```
+  
+  regenerate_file:
+    prompt: |
+      # Regenerate Specific Phase 1 File
+      
+      ## Context
+      Need to regenerate [FILE_NAME] for Phase 1.
+      
+      Read:
+      - phase_01_ARCHITECTURE.yaml (for reference)
+      - phase_01_IMPLEMENTATION.yaml (for structure)
+      
+      ## Task
+      Regenerate: [FILE_PATH]
+      
+      Requirements:
+      - Follow exact structure from Implementation doc
+      - Include all required sections
+      - Use data from Architecture doc
+      - Validate after generation
+      
+      ## Quality Check
+      [Specific validation commands for this file]
+      
+      ## Output Format
+      Complete file content ready to copy-paste
+
+best_practices:
+  prompt_usage:
+    - "Read context files before running prompts (Copilot needs context)"
+    - "Run validation after each step (catch errors early)"
+    - "If Copilot output is incomplete, re-run with 'Continue generating'"
+    - "Review generated content (don't blindly accept)"
+    - "Keep terminal open (validation commands ready)"
+  
+  copilot_chat_tips:
+    - "Use @workspace to reference all project files"
+    - "Use #file to reference specific files"
+    - "Use /explain to understand generated code"
+    - "Use /fix to correct errors"
+    - "Break complex prompts into smaller steps"
+  
+  quality_gates:
+    - "Always validate YAML syntax before moving on"
+    - "Always run openapi-spec-validator after OpenAPI changes"
+    - "Always check file existence before marking complete"
+    - "Always update documentation (PHASE_NOTES.md)"
+
+common_issues:
+  - issue: "openapi-spec-validator not found"
+    solution: "pip install openapi-spec-validator --break-system-packages"
+  
+  - issue: "yq command not found"
+    solution: "brew install yq (Mac) or snap install yq (Linux)"
+  
+  - issue: "YAML syntax error"
+    solution: "Use yq eval to identify line number; check indentation"
+  
+  - issue: "OpenAPI validation fails"
+    solution: "Check schema references (#/components/schemas/...); ensure all required fields present"
+  
+  - issue: "Copilot generates incomplete output"
+    solution: "Ask: 'Continue generating the rest of [FILE_NAME]'"
+
+notes:
+  - "These prompts are optimized for GitHub Copilot Chat"
+  - "Adapt prompts for other AI assistants (Claude, ChatGPT) as needed"
+  - "Prompts assume working directory is project root"
+  - "Validate each step before proceeding to next"
+  - "Update this file with new prompts as patterns emerge"
+
+version_history:
+  - version: "1.0.0"
+    date: "2025-10-04T16:30:00Z"
+    changes: "Initial copilot prompts for Phase 1"
+    author: "Claude (AI Assistant)"

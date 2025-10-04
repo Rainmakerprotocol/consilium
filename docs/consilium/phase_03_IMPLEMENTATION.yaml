@@ -1,0 +1,1048 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_03_implementation"
+doc_title: "Phase 3 — Discord Infrastructure Setup — Implementation"
+phase_id: "phase_03"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T20:45:00Z"
+last_updated_utc: "2025-10-04T20:45:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [chairman, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_03_BLUEPRINT.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+  produces:
+    - ".env"
+    - "docs/04_DISCORD_SETUP.md"
+    - "docs/assets/discord_setup/*.png"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Provide step-by-step manual procedures for Chairman to execute
+     Phase 3 Discord setup.
+  2. Voice: Use imperative steps ("Navigate to...", "Click...", "Copy...").
+  3. Audience: This is HUMAN-ONLY; no automation possible.
+  4. Tense policy: After Chairman completes setup and marks checklist complete,
+     convert steps to past tense and set status COMPLETE.
+  5. Outputs: .env file (local, not committed), setup guide, screenshots.
+  6. Evidence: Checklist completion in docs/04_DISCORD_SETUP.md.
+
+sections:
+
+  steps:
+    - "Step 1: Enable Discord Developer Mode"
+    - "Step 2: Navigate to Discord Developer Portal"
+    - "Step 3: Create Discord Application"
+    - "Step 4: Configure Application Metadata"
+    - "Step 5: Add Bot User to Application"
+    - "Step 6: Copy and Secure Bot Token"
+    - "Step 7: Configure Privileged Gateway Intents"
+    - "Step 8: Disable Public Bot Option"
+    - "Step 9: Generate Bot Invite URL"
+    - "Step 10: Create or Identify Discord Server"
+    - "Step 11: Create #consilium-architecture Channel"
+    - "Step 12: Invite Bot to Server"
+    - "Step 13: Verify Bot Permissions in Channel"
+    - "Step 14: Capture Server (Guild) ID"
+    - "Step 15: Capture Channel ID"
+    - "Step 16: Generate Consilium API Key"
+    - "Step 17: Populate .env File"
+    - "Step 18: Validate .env Configuration"
+    - "Step 19: Create Setup Documentation"
+    - "Step 20: Capture and Organize Screenshots"
+    - "Step 21: Complete Setup Checklist"
+    - "Step 22: Record Completion in Phase Notes"
+
+  outputs:
+    - ".env"
+    - "docs/04_DISCORD_SETUP.md"
+    - "docs/assets/discord_setup/01_developer_portal.png"
+    - "docs/assets/discord_setup/02_create_application.png"
+    - "docs/assets/discord_setup/03_bot_tab.png"
+    - "docs/assets/discord_setup/04_token_reveal.png"
+    - "docs/assets/discord_setup/05_intents.png"
+    - "docs/assets/discord_setup/06_oauth_url.png"
+    - "docs/assets/discord_setup/07_server_invite.png"
+    - "docs/assets/discord_setup/08_member_list.png"
+    - "docs/assets/discord_setup/09_channel_permissions.png"
+
+  post_validation:
+    commands: |
+      # Validate .env exists and has required structure
+      test -f .env && echo "✓ .env exists"
+      
+      # Validate environment variable formats
+      python - <<'PY'
+      import re, pathlib
+      env = pathlib.Path(".env").read_text(encoding="utf-8")
+      def get(k):
+          m = re.search(rf'^{re.escape(k)}=(.+)$', env, flags=re.M)
+          return m.group(1).strip() if m else None
+      token = get("DISCORD_BOT_TOKEN")
+      guild = get("DISCORD_GUILD_ID")
+      channel = get("DISCORD_CHANNEL_ID")
+      api = get("CONSILIUM_API_KEY")
+      log = get("LOG_LEVEL")
+      assert token and len(token) >= 50, f"Token invalid: {len(token) if token else 0} chars"
+      assert guild and re.fullmatch(r"\d{18,20}", guild), f"Guild ID invalid: {guild}"
+      assert channel and re.fullmatch(r"\d{18,20}", channel), f"Channel ID invalid: {channel}"
+      assert api and len(api) >= 32, f"API key invalid: {len(api) if api else 0} chars"
+      assert log in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}, f"Log level invalid: {log}"
+      print("✓ All .env variables validated")
+      PY
+      
+      # Validate setup documentation exists
+      test -f docs/04_DISCORD_SETUP.md && echo "✓ Setup guide exists"
+      
+      # Validate screenshot directory exists
+      test -d docs/assets/discord_setup && echo "✓ Screenshot directory exists"
+      
+      # Validate checklist completion
+      grep -q "\[x\] Bot registered in Developer Portal" docs/04_DISCORD_SETUP.md && \
+      grep -q "\[x\] Message Content intent enabled" docs/04_DISCORD_SETUP.md && \
+      grep -q "\[x\] Bot invited to server" docs/04_DISCORD_SETUP.md && \
+      echo "✓ Setup checklist completed"
+    expected: "All validation checks pass; .env properly formatted; documentation complete"
+
+  contract:
+    purpose: >
+      Establish Discord credentials and server configuration (bot, intents,
+      permissions, IDs) and record them in a local .env so later phases can
+      integrate programmatically without ambiguity.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_02_BLUEPRINT.yaml"
+      - "./phase_02_ARCHITECTURE.yaml"
+      - "./phase_02_IMPLEMENTATION.yaml"
+    outputs:
+      - ".env"
+      - "docs/04_DISCORD_SETUP.md"
+      - "docs/assets/discord_setup/"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import os, re, sys, pathlib
+        # 1) .env exists and includes sane values
+        envp = pathlib.Path(".env")
+        assert envp.exists(), ".env missing"
+        env = envp.read_text(encoding="utf-8")
+        def get(k):
+            m = re.search(rf'^{k}=(.+)$', env, flags=re.M)
+            return m.group(1).strip() if m else None
+        token = get("DISCORD_BOT_TOKEN")
+        guild = get("DISCORD_GUILD_ID")
+        channel = get("DISCORD_CHANNEL_ID")
+        api = get("CONSILIUM_API_KEY")
+        log = get("LOG_LEVEL")
+        assert token and len(token) >= 50, "DISCORD_BOT_TOKEN invalid (len)"
+        assert guild and re.fullmatch(r"\d{18,20}", guild), "DISCORD_GUILD_ID invalid"
+        assert channel and re.fullmatch(r"\d{18,20}", channel), "DISCORD_CHANNEL_ID invalid"
+        assert api and len(api) >= 16, "CONSILIUM_API_KEY invalid (len)"
+        assert (log or "INFO") in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}, "LOG_LEVEL invalid"
+        # 2) Setup doc has checklist marks
+        docp = pathlib.Path("docs/04_DISCORD_SETUP.md")
+        assert docp.exists(), "docs/04_DISCORD_SETUP.md missing"
+        doc = docp.read_text(encoding="utf-8")
+        required = [
+          "[x] Bot registered in Developer Portal",
+          "[x] Message Content intent enabled",
+          "[x] Bot invited to server with correct permissions",
+          "[x] Token stored in .env (not committed)",
+          "[x] Guild and Channel IDs captured",
+          "[x] Bot visible in server member list",
+        ]
+        missing = [r for r in required if r not in doc]
+        assert not missing, "Setup checklist incomplete: " + ", ".join(missing)
+        print("Phase 3 acceptance checks passed.")
+        PY
+      expected: "All checks succeed; .env values sane; setup doc includes completed checklist."
+    rollback: "git checkout -- docs/04_DISCORD_SETUP.md; rm -f .env"
+
+  ci_gate:
+    commands: |
+      test -f .env || echo "⚠ .env not created - manual phase not yet complete"
+      test -f docs/04_DISCORD_SETUP.md || echo "⚠ Setup guide not created - manual phase not yet complete"
+    expected: "After Chairman completes manual setup: files exist and validation passes"
+
+  rollback_procedure:
+    - "Revoke/rotate bot token in Discord Developer Portal"
+    - "Remove bot from server if needed"
+    - "Delete .env: rm -f .env"
+    - "Revert docs: git checkout -- docs/04_DISCORD_SETUP.md docs/assets/discord_setup/"
+
+---
+
+# ============================================================================
+# PHASE 3 IMPLEMENTATION: MANUAL DISCORD SETUP PROCEDURES
+# ============================================================================
+# CRITICAL: This phase MUST be executed manually by Chairman.
+# No automation is possible for Discord Developer Portal navigation.
+
+# ============================================================================
+# PREREQUISITES
+# ============================================================================
+
+prerequisites:
+  required:
+    - "Discord account with verified email address"
+    - "Web browser (Chrome, Firefox, Edge recommended)"
+    - "Screenshot tool (native OS screenshot or Snipping Tool)"
+    - "Text editor for .env file"
+    - "Ability to create Discord servers OR Manage Server permission on existing server"
+  
+  optional:
+    - "Password manager for storing bot token securely"
+    - "Image editing tool for redacting sensitive info in screenshots"
+
+# ============================================================================
+# STEP 1: Enable Discord Developer Mode
+# ============================================================================
+
+step_01_enable_developer_mode:
+  purpose: "Allows copying server and channel IDs via right-click context menu"
+  
+  procedure:
+    - "Open Discord desktop app or web app"
+    - "Click gear icon (⚙️) next to username (bottom-left)"
+    - "Scroll down to 'APP SETTINGS' section"
+    - "Click 'Advanced' in left sidebar"
+    - "Enable 'Developer Mode' toggle (should turn blue)"
+    - "Close settings"
+  
+  validation:
+    - "Right-click any server icon"
+    - "Verify 'Copy Server ID' appears in context menu"
+  
+  troubleshooting:
+    - issue: "Developer Mode toggle not present"
+      solution: "Update Discord to latest version; feature available since 2018"
+
+# ============================================================================
+# STEP 2: Navigate to Discord Developer Portal
+# ============================================================================
+
+step_02_navigate_to_portal:
+  purpose: "Access Discord's application management interface"
+  
+  procedure:
+    - "Open web browser"
+    - "Navigate to: https://discord.com/developers/applications"
+    - "Log in with your Discord account if prompted"
+    - "Complete 2FA if enabled (recommended)"
+  
+  expected_result: "See 'Applications' page with 'New Application' button"
+  
+  screenshot: "docs/assets/discord_setup/01_developer_portal.png"
+  screenshot_content: "Developer Portal homepage with 'New Application' button highlighted"
+  
+  troubleshooting:
+    - issue: "404 or access denied"
+      solution: "Verify Discord account is verified; check for service outages at status.discord.com"
+
+# ============================================================================
+# STEP 3: Create Discord Application
+# ============================================================================
+
+step_03_create_application:
+  purpose: "Create container for bot configuration"
+  
+  procedure:
+    - "Click 'New Application' button (top-right)"
+    - "Modal dialog appears: 'Create an Application'"
+    - "Enter application name: Consilium Relay Bot"
+    - "Check 'I agree to the Discord Developer Terms of Service and Developer Policy'"
+    - "Click 'Create' button"
+  
+  expected_result: "Redirected to application's General Information page"
+  
+  screenshot: "docs/assets/discord_setup/02_create_application.png"
+  screenshot_content: "Create Application modal with name filled in"
+  
+  notes:
+    - "Application name can be changed later if needed"
+    - "Name is visible to users when bot joins server"
+
+# ============================================================================
+# STEP 4: Configure Application Metadata (Optional)
+# ============================================================================
+
+step_04_configure_metadata:
+  purpose: "Add descriptive information (optional for MVP)"
+  
+  procedure:
+    - "On 'General Information' page, optionally fill:"
+      - "Description: Multi-AI collaboration relay for decision-making"
+      - "App Icon: Upload Consilium logo if available"
+      - "Tags: Add relevant tags (e.g., 'productivity', 'collaboration')"
+    - "Click 'Save Changes' if any changes made"
+  
+  expected_result: "Changes saved successfully message appears"
+  
+  notes:
+    - "Metadata is optional for MVP"
+    - "Can be updated later as project matures"
+
+# ============================================================================
+# STEP 5: Add Bot User to Application
+# ============================================================================
+
+step_05_add_bot_user:
+  purpose: "Create bot account that will connect to Discord gateway"
+  
+  procedure:
+    - "In left sidebar, click 'Bot' tab"
+    - "Click 'Add Bot' button"
+    - "Confirmation modal appears: 'Add a bot to this app?'"
+    - "Click 'Yes, do it!' button"
+  
+  expected_result: "Bot section appears with TOKEN field and configuration options"
+  
+  screenshot: "docs/assets/discord_setup/03_bot_tab.png"
+  screenshot_content: "Bot tab showing bot user created with username and token section"
+  
+  notes:
+    - "Bot creation is permanent (cannot be removed without deleting application)"
+    - "Default bot username matches application name"
+
+# ============================================================================
+# STEP 6: Copy and Secure Bot Token
+# ============================================================================
+
+step_06_copy_token:
+  purpose: "Obtain authentication token for bot"
+  
+  procedure:
+    - "In Bot section, locate TOKEN field (shows 'Click to Reveal Token')"
+    - "Click 'Reset Token' button"
+    - "Confirmation modal: 'Are you sure you want to reset token?'"
+    - "Click 'Yes, do it!' to confirm"
+    - "Token is now visible (50-80 character string with dots)"
+    - "Click 'Copy' button next to token"
+    - "IMMEDIATELY paste token into secure location (password manager or .env file)"
+  
+  expected_result: "Token copied to clipboard"
+  
+  screenshot: "docs/assets/discord_setup/04_token_reveal.png"
+  screenshot_content: "Token section with token REDACTED (black bar over token)"
+  screenshot_annotation: "⚠️ REDACT TOKEN - Never share or commit to Git"
+  
+  security_warnings:
+    - "⚠️ CRITICAL: Treat token like a password"
+    - "⚠️ Token grants full control of bot account"
+    - "⚠️ If token is exposed, reset it immediately"
+    - "⚠️ Token is shown ONLY ONCE; reset to see again"
+  
+  validation:
+    - "Token length >= 50 characters"
+    - "Token contains dots (.)"
+    - "Token has no whitespace"
+
+# ============================================================================
+# STEP 7: Configure Privileged Gateway Intents
+# ============================================================================
+
+step_07_configure_intents:
+  purpose: "Enable bot to read message content"
+  
+  procedure:
+    - "Scroll down on Bot page to 'Privileged Gateway Intents' section"
+    - "Locate 'MESSAGE CONTENT INTENT' toggle"
+    - "Click toggle to enable (should turn blue with checkmark)"
+    - "Modal may appear: 'Enable Message Content Intent?'"
+    - "Read warning about privileged intent"
+    - "Click 'Got it' or 'Enable' to confirm"
+    - "Scroll to top and click 'Save Changes' button"
+  
+  expected_result: "Message Content Intent enabled (blue toggle)"
+  
+  screenshot: "docs/assets/discord_setup/05_intents.png"
+  screenshot_content: "Privileged Gateway Intents section with MESSAGE CONTENT INTENT enabled"
+  
+  notes:
+    - "REQUIRED for bot to read message content"
+    - "For bots in <100 servers, no verification needed"
+    - "If bot reaches 100+ servers, Discord verification required"
+  
+  other_intents:
+    - "PRESENCE INTENT: Leave DISABLED (not needed)"
+    - "SERVER MEMBERS INTENT: Leave DISABLED (not needed)"
+    - "GUILDS: Automatically enabled (standard intent)"
+    - "GUILD_MESSAGES: Automatically enabled (standard intent)"
+
+# ============================================================================
+# STEP 8: Disable Public Bot Option
+# ============================================================================
+
+step_08_disable_public_bot:
+  purpose: "Prevent others from inviting bot to their servers"
+  
+  procedure:
+    - "On Bot page, locate 'PUBLIC BOT' toggle"
+    - "If enabled (blue), click to disable (should turn gray)"
+    - "Scroll to top and click 'Save Changes' if not already saved"
+  
+  expected_result: "Public Bot disabled (gray toggle)"
+  
+  notes:
+    - "Recommended for private/internal bots"
+    - "Prevents unauthorized invites"
+    - "Can be enabled later if bot becomes public service"
+
+# ============================================================================
+# STEP 9: Generate Bot Invite URL
+# ============================================================================
+
+step_09_generate_invite_url:
+  purpose: "Create OAuth2 link to invite bot with correct permissions"
+  
+  procedure:
+    - "In left sidebar, click 'OAuth2' tab"
+    - "Click 'URL Generator' sub-tab"
+    - "In 'SCOPES' section, check the 'bot' checkbox"
+    - "In 'BOT PERMISSIONS' section (appears after selecting 'bot'), check:"
+      - "✓ Send Messages"
+      - "✓ Read Message History"
+      - "✓ Create Public Threads"
+      - "✓ Send Messages in Threads"
+      - "✓ Embed Links"
+    - "Scroll down to 'GENERATED URL' section"
+    - "Click 'Copy' button next to URL"
+  
+  expected_result: "OAuth2 URL copied to clipboard (starts with https://discord.com/api/oauth2/authorize?...)"
+  
+  screenshot: "docs/assets/discord_setup/06_oauth_url.png"
+  screenshot_content: "OAuth2 URL Generator with bot scope and required permissions checked"
+  
+  permission_explanations:
+    - "Send Messages: Core relay functionality"
+    - "Read Message History: Enables GET /v1/strategy/fetch"
+    - "Create Public Threads: Enables POST /v1/strategy/start-thread"
+    - "Send Messages in Threads: Post to created threads"
+    - "Embed Links: Display attribution embeds"
+  
+  notes:
+    - "Do NOT grant 'Administrator' permission"
+    - "Permissions can be adjusted later via server settings"
+    - "URL includes bot's client ID automatically"
+
+# ============================================================================
+# STEP 10: Create or Identify Discord Server
+# ============================================================================
+
+step_10_create_or_identify_server:
+  purpose: "Establish Discord server for Consilium"
+  
+  option_a_create_new_server:
+    when: "No existing server available"
+    procedure:
+      - "In Discord app, click '+' icon in server list (left sidebar)"
+      - "Click 'Create My Own'"
+      - "Select 'For me and my friends' or 'For a club or community'"
+      - "Enter server name: Consilium Strategy Sessions"
+      - "Click 'Create'"
+    expected_result: "New server created; you are owner with all permissions"
+  
+  option_b_use_existing_server:
+    when: "Team already has Discord server"
+    requirements:
+      - "Chairman must have 'Manage Server' permission"
+      - "Server must allow bot invites (not disabled in settings)"
+    procedure:
+      - "Select existing server from server list"
+      - "Verify you have Manage Server permission: Server Settings → Roles"
+    expected_result: "Existing server selected; ready for channel creation"
+  
+  validation:
+    - "Server visible in Discord server list (left sidebar)"
+    - "You have permissions to create channels"
+
+# ============================================================================
+# STEP 11: Create #consilium-architecture Channel
+# ============================================================================
+
+step_11_create_channel:
+  purpose: "Create dedicated text channel for Consilium threads"
+  
+  procedure:
+    - "In Discord server, click '+' icon next to 'TEXT CHANNELS' header"
+    - "Modal appears: 'Create Channel'"
+    - "Channel Type: Text Channel (default)"
+    - "Channel Name: consilium-architecture"
+    - "Optional: Set channel topic: 'Multi-AI strategy sessions via Consilium Relay'"
+    - "Click 'Create Channel' button"
+  
+  expected_result: "New channel #consilium-architecture appears in channel list"
+  
+  optional_configuration:
+    - "Slowmode: Disabled (relay handles rate limiting)"
+    - "Age-restricted: No"
+    - "Category: Can create 'Strategy' category and place channel there"
+  
+  notes:
+    - "Channel name can be different (update in .env later)"
+    - "Recommended: Keep channel name simple, lowercase, hyphen-separated"
+
+# ============================================================================
+# STEP 12: Invite Bot to Server
+# ============================================================================
+
+step_12_invite_bot:
+  purpose: "Add bot to Discord server with configured permissions"
+  
+  procedure:
+    - "Open new browser tab"
+    - "Paste the OAuth2 URL generated in Step 9"
+    - "Press Enter to navigate to URL"
+    - "Discord authorization page appears"
+    - "In 'ADD BOT TO:' dropdown, select target server"
+    - "Review permissions list (should match Step 9 selections)"
+    - "Click 'Authorize' button"
+    - "Complete CAPTCHA if prompted"
+    - "Success message: '[Bot Name] has been added to [Server Name]'"
+  
+  expected_result: "Bot appears in server member list with 'BOT' tag"
+  
+  screenshot: "docs/assets/discord_setup/07_server_invite.png"
+  screenshot_content: "Discord OAuth2 authorization page showing bot permissions"
+  
+  troubleshooting:
+    - issue: "Target server not in dropdown"
+      causes: ["Lack Manage Server permission", "Bot already in server"]
+      solutions: ["Get Manage Server role from server owner", "Check member list - bot may already be present"]
+    
+    - issue: "'Invalid Permissions' error"
+      causes: ["Wrong client ID in URL", "Bot deleted from portal"]
+      solutions: ["Regenerate URL from OAuth2 page", "Verify application still exists"]
+
+# ============================================================================
+# STEP 13: Verify Bot Permissions in Channel
+# ============================================================================
+
+step_13_verify_permissions:
+  purpose: "Confirm bot has required permissions in #consilium-architecture"
+  
+  procedure:
+    - "In Discord, navigate to #consilium-architecture channel"
+    - "Right-click channel name → 'Edit Channel'"
+    - "Click 'Permissions' tab in left sidebar"
+    - "Locate bot role in permissions list (usually named same as bot)"
+    - "Click bot role to expand permissions"
+    - "Verify green checkmarks (✓) for:"
+      - "View Channel"
+      - "Send Messages"
+      - "Read Message History"
+      - "Create Public Threads"
+      - "Send Messages in Threads"
+      - "Embed Links"
+    - "If any missing, click permission to enable"
+    - "Click 'Save Changes' if modifications made"
+  
+  expected_result: "All required permissions enabled (green checkmarks)"
+  
+  screenshot: "docs/assets/discord_setup/09_channel_permissions.png"
+  screenshot_content: "Channel permissions showing bot role with required permissions enabled"
+  
+  notes:
+    - "Channel-level permissions override role-level permissions"
+    - "Bot should have minimal permissions at server level"
+    - "Only grant permissions needed for #consilium-architecture"
+
+# ============================================================================
+# STEP 14: Capture Server (Guild) ID
+# ============================================================================
+
+step_14_capture_guild_id:
+  purpose: "Obtain numeric ID for Discord server"
+  
+  procedure:
+    - "Ensure Developer Mode is enabled (Step 1)"
+    - "In Discord, right-click server icon (left sidebar)"
+    - "Click 'Copy Server ID' from context menu"
+    - "ID copied to clipboard (18-20 digit number)"
+    - "Paste ID into text file or notes for Step 17"
+  
+  expected_result: "Guild ID copied (format: 123456789012345678)"
+  
+  validation:
+    - "ID is 18-20 digits long"
+    - "ID contains only numbers (no letters)"
+  
+  troubleshooting:
+    - issue: "'Copy Server ID' not in menu"
+      solution: "Enable Developer Mode (Step 1); restart Discord app if needed"
+
+# ============================================================================
+# STEP 15: Capture Channel ID
+# ============================================================================
+
+step_15_capture_channel_id:
+  purpose: "Obtain numeric ID for #consilium-architecture channel"
+  
+  procedure:
+    - "Ensure Developer Mode is enabled (Step 1)"
+    - "In Discord, right-click #consilium-architecture channel"
+    - "Click 'Copy Channel ID' from context menu"
+    - "ID copied to clipboard (18-20 digit number)"
+    - "Paste ID into text file or notes for Step 17"
+  
+  expected_result: "Channel ID copied (format: 987654321098765432)"
+  
+  validation:
+    - "ID is 18-20 digits long"
+    - "ID contains only numbers"
+    - "ID is different from Guild ID"
+
+# ============================================================================
+# STEP 16: Generate Consilium API Key
+# ============================================================================
+
+step_16_generate_api_key:
+  purpose: "Create authentication key for relay API clients"
+  
+  procedure:
+    - "Open terminal or command prompt"
+    - "Run command:"
+      command: 'python -c "import secrets; print(\"csk_\" + secrets.token_hex(32))"'
+    - "API key printed to console (format: csk_[64 hex characters])"
+    - "Copy API key"
+    - "Save securely in password manager or notes for Step 17"
+  
+  expected_result: "API key generated (example: csk_1a2b3c4d5e6f...)"
+  
+  validation:
+    - "Key starts with 'csk_'"
+    - "Total length: 68 characters (4 prefix + 64 hex)"
+  
+  alternative_methods:
+    - "Online tool: https://www.random.org/strings/?num=1&len=64&digits=on&loweralpha=on&unique=on"
+    - "Manually prefix with 'csk_'"
+  
+  security_notes:
+    - "Use strong random key (32+ bytes entropy)"
+    - "Store securely like bot token"
+    - "Rotate quarterly or if compromised"
+
+# ============================================================================
+# STEP 17: Populate .env File
+# ============================================================================
+
+step_17_populate_env_file:
+  purpose: "Record all credentials in local .env file"
+  
+  procedure:
+    - "Navigate to project root directory (where .env.example exists)"
+    - "Copy .env.example to .env:"
+      command: "cp .env.example .env"
+    - "Open .env in text editor"
+    - "Replace placeholder values with actual credentials:"
+      - "DISCORD_BOT_TOKEN=<paste bot token from Step 6>"
+      - "DISCORD_GUILD_ID=<paste guild ID from Step 14>"
+      - "DISCORD_CHANNEL_ID=<paste channel ID from Step 15>"
+      - "CONSILIUM_API_KEY=<paste API key from Step 16>"
+      - "LOG_LEVEL=INFO (recommended for MVP)"
+    - "Save .env file"
+    - "Close editor"
+  
+  expected_result: ".env file contains all 5 variables with actual values"
+  
+  example_env_content: |
+    DISCORD_BOT_TOKEN=MTIzNDU2Nzg5MDEyMzQ1Njc4OTAuGX1AbC.dQw4w9WgXcQ_actual_token_here
+    DISCORD_GUILD_ID=123456789012345678
+    DISCORD_CHANNEL_ID=987654321098765432
+    CONSILIUM_API_KEY=csk_1a2b3c4d5e6f7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z
+    LOG_LEVEL=INFO
+  
+  security_checklist:
+    - "[ ] .env file is NOT in Git staging area (git status shows nothing)"
+    - "[ ] .env is listed in .gitignore"
+    - "[ ] No spaces around '=' signs"
+    - "[ ] No quotes around values"
+    - "[ ] File permissions restrict access (chmod 600 .env on Unix)"
+
+# ============================================================================
+# STEP 18: Validate .env Configuration
+# ============================================================================
+
+step_18_validate_env:
+  purpose: "Verify .env file has correct format and valid values"
+  
+  procedure:
+    - "Run validation script:"
+      command: |
+        python - <<'PY'
+        import re, pathlib, sys
+        try:
+            env = pathlib.Path(".env").read_text(encoding="utf-8")
+            def get(k):
+                m = re.search(rf'^{k}=(.+)$', env, flags=re.M)
+                return m.group(1).strip() if m else None
+            token = get("DISCORD_BOT_TOKEN")
+            guild = get("DISCORD_GUILD_ID")
+            channel = get("DISCORD_CHANNEL_ID")
+            api = get("CONSILIUM_API_KEY")
+            log = get("LOG_LEVEL")
+            
+            errors = []
+            if not token or len(token) < 50:
+                errors.append(f"DISCORD_BOT_TOKEN invalid: {len(token) if token else 0} chars (need 50+)")
+            if not guild or not re.fullmatch(r"\d{18,20}", guild):
+                errors.append(f"DISCORD_GUILD_ID invalid: {guild} (need 18-20 digits)")
+            if not channel or not re.fullmatch(r"\d{18,20}", channel):
+                errors.append(f"DISCORD_CHANNEL_ID invalid: {channel} (need 18-20 digits)")
+            if not api or len(api) < 32:
+                errors.append(f"CONSILIUM_API_KEY invalid: {len(api) if api else 0} chars (need 32+)")
+            if log and log not in {"DEBUG","INFO","WARNING","ERROR","CRITICAL"}:
+                errors.append(f"LOG_LEVEL invalid: {log} (must be DEBUG|INFO|WARNING|ERROR|CRITICAL)")
+            
+            if errors:
+                print("❌ .env validation FAILED:")
+                for e in errors:
+                    print(f"  - {e}")
+                sys.exit(1)
+            else:
+                print("✅ .env validation PASSED")
+                print(f"  ✓ Bot token: {len(token)} chars")
+                print(f"  ✓ Guild ID: {guild}")
+                print(f"  ✓ Channel ID: {channel}")
+                print(f"  ✓ API key: {len(api)} chars")
+                print(f"  ✓ Log level: {log}")
+        except FileNotFoundError:
+            print("❌ .env file not found")
+            sys.exit(1)
+        PY
+  
+  expected_output: |
+    ✅ .env validation PASSED
+      ✓ Bot token: 72 chars
+      ✓ Guild ID: 123456789012345678
+      ✓ Channel ID: 987654321098765432
+      ✓ API key: 68 chars
+      ✓ Log level: INFO
+  
+  troubleshooting:
+    - error: "DISCORD_BOT_TOKEN invalid"
+      causes: ["Extra whitespace", "Copied partially", "Old token"]
+      solutions: ["Reset token in Developer Portal", "Copy entire token", "Remove spaces"]
+    
+    - error: "Guild/Channel ID invalid"
+      causes: ["Copied user ID instead", "Developer Mode disabled"]
+      solutions: ["Right-click server/channel (not user)", "Re-enable Developer Mode"]
+
+# ============================================================================
+# STEP 19: Create Setup Documentation
+# ============================================================================
+
+step_19_create_setup_doc:
+  purpose: "Document setup process for future reference"
+  
+  procedure:
+    - "Create file: docs/04_DISCORD_SETUP.md"
+    - "Use template structure from phase_03_ARCHITECTURE.yaml section 'documentation_architecture'"
+    - "Include all sections:"
+      - "Prerequisites"
+      - "Part 1: Create Discord Application & Bot"
+      - "Part 2: Configure Bot Intents"
+      - "Part 3: Generate Invite Link"
+      - "Part 4: Create/Configure Discord Server"
+      - "Part 5: Invite Bot to Server"
+      - "Part 6: Capture IDs"
+      - "Part 7: Populate .env File"
+      - "Part 8: Verify Setup (with checklist)"
+      - "Troubleshooting"
+    - "Reference screenshots in docs/assets/discord_setup/"
+    - "Include completion checklist at end"
+  
+  completion_checklist_template: |
+    ## Setup Verification Checklist
+    
+    Mark each item as complete after verification:
+    
+    - [ ] Bot registered in Developer Portal
+    - [ ] Message Content intent enabled
+    - [ ] Bot invited to server with correct permissions
+    - [ ] Token stored in .env (not committed)
+    - [ ] Guild and Channel IDs captured
+    - [ ] Bot visible in server member list
+    - [ ] Channel permissions verified (Send Messages, Read History, Create Threads)
+    - [ ] .env validation script passes
+    - [ ] .env is gitignored (not staged in Git)
+    
+    **Status**: ⏳ In Progress / ✅ Complete
+    
+    **Completed By**: [Chairman Name]  
+    **Date**: [YYYY-MM-DD]
+
+# ============================================================================
+# STEP 20: Capture and Organize Screenshots
+# ============================================================================
+
+step_20_capture_screenshots:
+  purpose: "Create visual guide for future reference and troubleshooting"
+  
+  procedure:
+    - "Create directory: docs/assets/discord_setup/"
+    - "Capture screenshots for each major step:"
+      - "01_developer_portal.png - Developer Portal homepage"
+      - "02_create_application.png - Create Application modal"
+      - "03_bot_tab.png - Bot tab after bot created"
+      - "04_token_reveal.png - Token section (REDACT token with black bar)"
+      - "05_intents.png - Privileged Gateway Intents with MESSAGE CONTENT enabled"
+      - "06_oauth_url.png - OAuth2 URL Generator with permissions"
+      - "07_server_invite.png - Discord authorization page"
+      - "08_member_list.png - Bot in server member list"
+      - "09_channel_permissions.png - Channel permissions for bot"
+    - "Use image editor to add:"
+      - "Red boxes around important UI elements"
+      - "Black bars to redact sensitive information"
+      - "Arrows or annotations if needed"
+    - "Save as PNG with compression"
+  
+  screenshot_requirements:
+    - "Resolution: 1920x1080 or higher preferred"
+    - "Format: PNG (not JPEG - better for UI screenshots)"
+    - "File size: < 500 KB per screenshot (compress if needed)"
+  
+  security_redactions:
+    must_redact:
+      - "Bot tokens (always use black bar)"
+      - "Email addresses"
+      - "Full Discord usernames (can use 'Chairman' alias)"
+    ok_to_show:
+      - "Discord UI elements"
+      - "Bot username"
+      - "Server/channel names (if not sensitive)"
+      - "Permission names and checkboxes"
+
+# ============================================================================
+# STEP 21: Complete Setup Checklist
+# ============================================================================
+
+step_21_complete_checklist:
+  purpose: "Mark setup as complete in documentation"
+  
+  procedure:
+    - "Open docs/04_DISCORD_SETUP.md"
+    - "Navigate to 'Setup Verification Checklist' section"
+    - "Change all [ ] to [x] for completed items:"
+      - "[x] Bot registered in Developer Portal"
+      - "[x] Message Content intent enabled"
+      - "[x] Bot invited to server with correct permissions"
+      - "[x] Token stored in .env (not committed)"
+      - "[x] Guild and Channel IDs captured"
+      - "[x] Bot visible in server member list"
+      - "[x] Channel permissions verified"
+      - "[x] .env validation script passes"
+      - "[x] .env is gitignored"
+    - "Update Status: ✅ Complete"
+    - "Fill in Completed By and Date"
+    - "Save file"
+  
+  expected_result: "All checklist items marked [x]; Status shows ✅ Complete"
+
+# ============================================================================
+# STEP 22: Record Completion in Phase Notes
+# ============================================================================
+
+step_22_record_completion:
+  purpose: "Log Phase 3 completion for project tracking"
+  
+  procedure:
+    - "Open or create file: PHASE_NOTES.md in project root"
+    - "Append Phase 3 completion entry:"
+      content: |
+        
+        ---
+        ## Phase 3: Discord Infrastructure Setup
+        
+        **Status**: COMPLETE  
+        **Completed**: 2025-10-04T21:30:00Z  
+        **Executed By**: Chairman (Manual Setup)
+        
+        ### Deliverables Completed
+        - ✓ Discord bot registered (Application ID: [redacted])
+        - ✓ Message Content intent enabled
+        - ✓ Bot invited to server with required permissions
+        - ✓ .env populated with credentials (bot token, guild ID, channel ID, API key)
+        - ✓ docs/04_DISCORD_SETUP.md created with complete guide
+        - ✓ 9 screenshots captured and organized in docs/assets/discord_setup/
+        - ✓ Setup checklist completed and marked
+        
+        ### Validation Results
+        - ✓ Bot visible in Discord member list with BOT tag
+        - ✓ Bot has Send Messages, Read History, Create Threads permissions
+        - ✓ .env validation script passed (all 5 variables valid format)
+        - ✓ .env properly gitignored (not staged)
+        - ✓ Screenshots redacted (tokens/emails covered)
+        
+        ### Configuration Summary
+        - Server: [Server Name] (Guild ID: 18 digits)
+        - Channel: #consilium-architecture (Channel ID: 18 digits)
+        - Bot Token: 72 characters (securely stored)
+        - API Key: 68 characters (csk_ prefix)
+        - Log Level: INFO
+        
+        ### Next Phase
+        **Phase 4**: Core Framework
+        - Implement FastAPI application (src/main.py)
+        - Create config loader (src/core/config.py)
+        - Set up structured logging (src/core/logging.py)
+        - Mount health check endpoint (GET /v1/system/health)
+        
+        **Blockers**: None  
+        **Issues**: None  
+        **Notes**: Discord infrastructure complete; ready to begin FastAPI implementation.
+    - "Save file"
+  
+  expected_result: "Phase 3 entry added to PHASE_NOTES.md"
+
+# ============================================================================
+# FINAL VALIDATION
+# ============================================================================
+
+final_validation:
+  description: "Comprehensive validation before marking Phase 3 complete"
+  
+  automated_checks:
+    command: |
+      # Run all validation checks
+      echo "=== Phase 3 Final Validation ==="
+      
+      # 1. Verify files exist
+      test -f .env && echo "✓ .env exists" || echo "✗ .env missing"
+      test -f docs/04_DISCORD_SETUP.md && echo "✓ Setup guide exists" || echo "✗ Setup guide missing"
+      test -d docs/assets/discord_setup && echo "✓ Screenshot directory exists" || echo "✗ Screenshot directory missing"
+      
+      # 2. Validate .env content
+      python - <<'PY'
+      import re, pathlib
+      env = pathlib.Path(".env").read_text(encoding="utf-8")
+      def get(k):
+          m = re.search(rf'^{k}=(.+)$', env, flags=re.M)
+          return m.group(1).strip() if m else None
+      token = get("DISCORD_BOT_TOKEN")
+      guild = get("DISCORD_GUILD_ID")
+      channel = get("DISCORD_CHANNEL_ID")
+      api = get("CONSILIUM_API_KEY")
+      log = get("LOG_LEVEL")
+      assert token and len(token) >= 50, "Token invalid"
+      assert guild and re.fullmatch(r"\d{18,20}", guild), "Guild ID invalid"
+      assert channel and re.fullmatch(r"\d{18,20}", channel), "Channel ID invalid"
+      assert api and len(api) >= 32, "API key invalid"
+      print("✓ All .env variables valid")
+      PY
+      
+      # 3. Verify checklist completion
+      grep -q "\[x\] Bot registered in Developer Portal" docs/04_DISCORD_SETUP.md && echo "✓ Checklist complete" || echo "✗ Checklist incomplete"
+      
+      # 4. Verify .env is gitignored
+      git check-ignore .env > /dev/null && echo "✓ .env is gitignored" || echo "✗ .env NOT gitignored"
+      
+      echo "=== Validation Complete ==="
+    
+    expected_output: |
+      === Phase 3 Final Validation ===
+      ✓ .env exists
+      ✓ Setup guide exists
+      ✓ Screenshot directory exists
+      ✓ All .env variables valid
+      ✓ Checklist complete
+      ✓ .env is gitignored
+      === Validation Complete ===
+  
+  manual_checks:
+    - "Open Discord desktop/web app"
+    - "Navigate to Consilium server"
+    - "Verify bot visible in member list (right sidebar)"
+    - "Right-click #consilium-architecture → Edit Channel → Permissions"
+    - "Verify bot has green checkmarks for required permissions"
+    - "Visit Discord Developer Portal → Applications → Consilium Relay Bot → Bot"
+    - "Verify Message Content Intent is enabled (blue toggle)"
+  
+  acceptance_gate:
+    description: "Phase 3 is complete when:"
+    criteria:
+      - ".env exists and passes validation"
+      - "docs/04_DISCORD_SETUP.md exists with completed checklist"
+      - "Screenshots organized in docs/assets/discord_setup/"
+      - "Bot visible in Discord server member list"
+      - "Bot has required permissions in target channel"
+      - "Phase Notes updated with completion entry"
+      - "No .env file in Git staging area"
+
+# ============================================================================
+# TROUBLESHOOTING REFERENCE
+# ============================================================================
+
+troubleshooting_reference:
+  common_issues:
+    - issue: "Bot shows as offline in member list"
+      explanation: "Bot will appear offline until Phase 4 connects it to gateway"
+      expected: "Bot shows 'offline' status until src/discord/client.py runs"
+      not_an_error: true
+    
+    - issue: "Cannot see bot in member list at all"
+      causes: ["Bot not invited", "Wrong server", "Invite failed"]
+      solutions: ["Regenerate invite URL and re-invite", "Check server dropdown during invite", "Verify OAuth2 permissions"]
+    
+    - issue: ".env validation fails on token length"
+      causes: ["Partial copy", "Extra newlines", "Wrong token"]
+      solutions: ["Reset token and copy entire string", "Remove any whitespace", "Verify token from Developer Portal"]
+    
+    - issue: "Git shows .env as untracked file"
+      causes: [".gitignore not working", ".env.example copied instead of .env"]
+      solutions: ["Verify .gitignore contains '.env' line", "Rename .env.example to .env", "Run 'git rm --cached .env' if previously committed"]
+    
+    - issue: "Cannot enable Message Content intent"
+      causes: ["Bot in 100+ servers", "Business account restrictions"]
+      solutions: ["Create new application for MVP (<100 servers)", "Submit verification request if scaling"]
+
+  getting_help:
+    - "Discord Developer Documentation: https://discord.com/developers/docs"
+    - "Discord Developer Support Server: https://discord.gg/discord-developers"
+    - "Project PHASE_NOTES.md for previous similar issues"
+    - "Review screenshots in docs/assets/discord_setup/ to compare your setup"
+
+# ============================================================================
+# COMPLETION CONFIRMATION
+# ============================================================================
+
+completion_confirmation:
+  message: |
+    ✅ Phase 3: Discord Infrastructure Setup - COMPLETE
+    
+    All manual setup steps have been executed:
+    1. ✓ Discord bot created and configured
+    2. ✓ Intents and permissions set correctly
+    3. ✓ Bot invited to server
+    4. ✓ Credentials captured and stored in .env
+    5. ✓ Documentation created with screenshots
+    6. ✓ Setup verified and checklist completed
+    
+    READY FOR PHASE 4: Core Framework
+    
+    Next steps:
+    - Implement FastAPI application (src/main.py)
+    - Create configuration loader (src/core/config.py)
+    - Set up structured logging (src/core/logging.py)
+    - Mount health check endpoint
+    
+    The bot will connect to Discord and go "online" when Phase 4 runs.

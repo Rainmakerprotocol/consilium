@@ -1,0 +1,564 @@
+---
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: "phase_02_architecture"
+doc_title: "Phase 2 — Repository Foundation & Dependencies — Architecture"
+phase_id: "phase_02"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T19:15:00Z"
+last_updated_utc: "2025-10-04T19:15:00Z"
+blueprint_path: "./phase_02_BLUEPRINT.yaml"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_02_BLUEPRINT.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+    - "../00_parent/00_AI_AGENT_RULES.md"
+    - "../consilium-9_phase_plan.yml"
+  produces:
+    - "./phase_02_IMPLEMENTATION.yaml"
+  updates:
+    - "../TECHNICAL_DECISIONS.md"
+    - "../PHASE_NOTES.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define HOW Phase 2 will scaffold the repository foundation with
+     pinned dependencies and developer tooling configuration.
+  2. Conformance: All file structures MUST match the directory tree specified
+     in consilium-9_phase_plan.yml and 00_COPILOT_README.md.
+  3. Tense policy: Use future tense while drafting; convert to past tense when
+     status changes to COMPLETE.
+  4. Carry forward: Contract block is copied verbatim from the Blueprint.
+  5. Precision: Define exact file contents, tool configurations, and dependency
+     versions to eliminate ambiguity.
+  6. Validation: Provide scriptable checks that verify all deliverables.
+
+design_philosophy: >
+  Phase 2 establishes a minimal, convention-driven Python 3.11 project skeleton
+  that enforces consistency through tooling (black, isort, mypy) and explicit
+  dependency pinning. The architecture prioritizes reproducibility across
+  development environments while maintaining flexibility for future feature
+  additions. All configuration is centralized in pyproject.toml following modern
+  Python packaging standards (PEP 517/518).
+
+key_design_decisions:
+  - decision: "Exact dependency version pinning in requirements.txt"
+    rationale: "Eliminates dependency drift; ensures reproducible builds; simplifies debugging"
+    alternatives_considered:
+      - "Version ranges (>=, ~=)"
+      - "Unpinned latest versions"
+      - "Poetry with lock files"
+    tradeoffs: "Requires manual updates but provides stability for MVP"
+    record_in_technical_decisions: true
+
+  - decision: "Centralized tool configuration in pyproject.toml"
+    rationale: "Single source of truth for black/isort/mypy; reduces config file sprawl"
+    alternatives_considered:
+      - "Separate .black, .isort.cfg, mypy.ini files"
+      - "setup.cfg for all tools"
+    tradeoffs: "Requires pyproject.toml support in all tools (widely supported)"
+    record_in_technical_decisions: true
+
+  - decision: "Empty __init__.py files for namespace packages"
+    rationale: "Minimal approach; no import side effects; explicit is better than implicit"
+    alternatives_considered:
+      - "__init__.py with __all__ exports"
+      - "Namespace packages without __init__.py"
+    tradeoffs: "Requires explicit imports but prevents circular dependencies"
+    record_in_technical_decisions: false
+
+  - decision: "src/ layout over flat project structure"
+    rationale: "Prevents accidental imports from project root; enforces proper installation; industry standard"
+    alternatives_considered:
+      - "Flat structure (app/, tests/ at root)"
+      - "Nested module structure (consilium/api/, consilium/discord/)"
+    tradeoffs: "Requires editable install (pip install -e .) but improves import hygiene"
+    record_in_technical_decisions: true
+
+sections:
+
+  module_map: |
+    consilium-relay/
+    ├── src/
+    │   ├── api/
+    │   │   └── __init__.py          # Empty marker for api package
+    │   ├── discord/
+    │   │   └── __init__.py          # Empty marker for discord package
+    │   ├── core/
+    │   │   └── __init__.py          # Empty marker for core package
+    │   └── main.py                  # Placeholder for FastAPI app (Phase 4)
+    ├── tests/
+    │   └── __init__.py              # Empty marker for tests package
+    ├── docs/
+    │   └── .gitkeep                 # Track empty docs directory
+    ├── requirements.txt             # Pinned production dependencies
+    ├── .env.example                 # Environment variable template
+    ├── .gitignore                   # Git exclusions
+    ├── pyproject.toml               # Tool configurations
+    └── README.md                    # Project documentation
+
+  interfaces:
+    rest_endpoints: []               # No endpoints in Phase 2
+    internal_apis: []                # No internal APIs in Phase 2
+
+  non_functional_requirements:
+    - "All Python files use UTF-8 encoding"
+    - "Line endings normalized to LF (Unix-style)"
+    - "80-character line length enforced by black"
+    - "Type hints required for all public functions (enforced by mypy)"
+    - "Import sorting follows isort profile: black"
+    - "No hardcoded secrets in any committed files"
+    - "Cross-platform compatibility (Windows/Linux/macOS)"
+
+system_architecture:
+
+  directory_structure:
+    rationale: >
+      The src/ layout separates source code from project metadata, tests, and
+      documentation. This prevents accidental imports from the project root and
+      enforces proper package installation practices. The structure mirrors the
+      component architecture defined in Phase 1: api/ for HTTP endpoints,
+      discord/ for Discord client integration, and core/ for shared utilities
+      (config, logging).
+
+    components:
+      - path: "src/api/"
+        purpose: "HTTP endpoint handlers and Pydantic models"
+        phase_implementation: "Phase 4 (Core Framework) and Phase 5 (Endpoints)"
+        current_state: "Empty package with __init__.py marker"
+
+      - path: "src/discord/"
+        purpose: "Discord client, message handling, rate limiting"
+        phase_implementation: "Phase 6 (Discord Integration)"
+        current_state: "Empty package with __init__.py marker"
+
+      - path: "src/core/"
+        purpose: "Configuration loading, structured logging, shared utilities"
+        phase_implementation: "Phase 4 (Core Framework)"
+        current_state: "Empty package with __init__.py marker"
+
+      - path: "src/main.py"
+        purpose: "FastAPI application entrypoint"
+        phase_implementation: "Phase 4 (Core Framework)"
+        current_state: "Placeholder file with TODO comment or minimal import"
+
+      - path: "tests/"
+        purpose: "Test suite mirroring src/ structure"
+        phase_implementation: "Phase 7 (Testing Suite)"
+        current_state: "Empty package with __init__.py marker"
+
+      - path: "docs/"
+        purpose: "Phase documentation, specs, ADRs"
+        phase_implementation: "Populated in Phases 0-9"
+        current_state: "Empty directory with .gitkeep"
+
+  dependency_architecture:
+    strategy: "Exact version pinning for reproducibility"
+    
+    production_dependencies:
+      - package: "fastapi"
+        version: "0.104.1"
+        purpose: "Async web framework for REST API"
+        justification: "High performance, native async support, automatic OpenAPI generation"
+
+      - package: "uvicorn[standard]"
+        version: "0.24.0"
+        purpose: "ASGI server for FastAPI"
+        justification: "Production-ready, supports HTTP/1.1 and WebSockets, recommended by FastAPI"
+
+      - package: "pydantic"
+        version: "2.4.2"
+        purpose: "Data validation and settings management"
+        justification: "Tight FastAPI integration, JSON Schema export, v2 performance improvements"
+
+      - package: "discord.py"
+        version: "2.3.2"
+        purpose: "Discord API client library"
+        justification: "Official Discord library, async-first, comprehensive feature support"
+
+      - package: "python-dotenv"
+        version: "1.0.0"
+        purpose: "Environment variable loading from .env files"
+        justification: "Simple, widely used, no dependencies, secure .env parsing"
+
+    development_dependencies:
+      - package: "pytest"
+        version: "7.4.3"
+        purpose: "Testing framework"
+        justification: "Industry standard, plugin ecosystem, fixture support"
+
+      - package: "pytest-asyncio"
+        version: "0.21.1"
+        purpose: "Async test support for pytest"
+        justification: "Essential for testing FastAPI and discord.py async code"
+
+      - package: "pytest-mock"
+        version: "3.12.0"
+        purpose: "Mock/patch fixtures for pytest"
+        justification: "Simplifies mocking Discord API calls and external dependencies"
+
+      - package: "pytest-cov"
+        version: "4.1.0"
+        purpose: "Coverage reporting for pytest"
+        justification: "Enables >80% coverage requirement enforcement"
+
+      - package: "black"
+        version: "23.10.1"
+        purpose: "Code formatter"
+        justification: "Deterministic formatting, widely adopted, configurable via pyproject.toml"
+
+      - package: "isort"
+        version: "5.12.0"
+        purpose: "Import sorting"
+        justification: "Configurable profiles, black compatibility, enforces import conventions"
+
+      - package: "mypy"
+        version: "1.6.1"
+        purpose: "Static type checker"
+        justification: "Catches type errors before runtime, enforces type hint usage"
+
+      - package: "ruff"
+        version: "0.1.3"
+        purpose: "Fast Python linter"
+        justification: "Replaces flake8/pylint, 10-100x faster, auto-fix support"
+
+    version_update_policy: >
+      Dependencies are pinned to exact versions for MVP stability. Post-MVP,
+      implement automated dependency scanning (Dependabot/Renovate) with
+      CI-validated updates. Security patches applied immediately; feature
+      updates evaluated quarterly.
+
+  tool_configuration_architecture:
+
+    black_config:
+      line_length: 80
+      target_version: ["py311"]
+      skip_string_normalization: false
+      skip_magic_trailing_comma: false
+      rationale: "Enforces 80-char requirement from 00_COPILOT_README.md"
+
+    isort_config:
+      profile: "black"
+      line_length: 80
+      force_single_line: false
+      known_first_party: ["src"]
+      rationale: "Black-compatible profile prevents formatting conflicts"
+
+    mypy_config:
+      python_version: "3.11"
+      strict: true
+      warn_return_any: true
+      warn_unused_configs: true
+      disallow_untyped_defs: true
+      disallow_incomplete_defs: true
+      check_untyped_defs: true
+      no_implicit_optional: true
+      warn_redundant_casts: true
+      warn_unused_ignores: true
+      warn_no_return: true
+      warn_unreachable: true
+      rationale: "Strict mode enforces type hint requirement from 00_AI_AGENT_RULES.md"
+
+    ruff_config:
+      line_length: 80
+      target_version: "py311"
+      select: ["E", "F", "W", "I", "N", "UP", "ANN", "B", "C4", "DTZ", "T20", "SIM"]
+      ignore: ["ANN101", "ANN102"]  # Ignore missing type annotations for self/cls
+      rationale: "Comprehensive linting covering PEP 8, type hints, and common errors"
+
+  environment_configuration_architecture:
+
+    required_variables:
+      - name: "DISCORD_BOT_TOKEN"
+        format: "50+ character alphanumeric string"
+        source: "Discord Developer Portal (Phase 3)"
+        example: "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAuGX1AbC.dQw4w9WgXcQ_3xample_T0ken_Here"
+        validation: "Length >= 50"
+        security: "Never commit actual value; use .env (gitignored)"
+
+      - name: "DISCORD_GUILD_ID"
+        format: "18-digit numeric string"
+        source: "Discord server settings (Phase 3)"
+        example: "123456789012345678"
+        validation: "Length == 18, all digits"
+        security: "Low sensitivity but keep in .env for consistency"
+
+      - name: "DISCORD_CHANNEL_ID"
+        format: "18-digit numeric string"
+        source: "Discord channel settings (Phase 3)"
+        example: "987654321098765432"
+        validation: "Length == 18, all digits"
+        security: "Low sensitivity but keep in .env for consistency"
+
+      - name: "CONSILIUM_API_KEY"
+        format: "32+ character random string"
+        source: "Generated by Chairman (Phase 3 or 9)"
+        example: "csk_1234567890abcdef1234567890abcdef"
+        validation: "Length >= 32"
+        security: "CRITICAL - never commit; use secrets manager in production"
+
+      - name: "LOG_LEVEL"
+        format: "Python logging level string"
+        source: "Configuration choice"
+        example: "INFO"
+        validation: "Must be one of: DEBUG, INFO, WARNING, ERROR, CRITICAL"
+        security: "No security implications"
+
+    env_example_format: >
+      Each variable will include:
+      1. Section header comment (e.g., # Discord Bot Configuration)
+      2. Variable name with example value
+      3. Inline comment describing format and length requirements
+      4. Blank line between sections for readability
+
+  gitignore_architecture:
+
+    exclusion_patterns:
+      environment_files:
+        - ".env"
+        - ".env.local"
+        - ".env.*.local"
+        rationale: "Prevent secret leaks; .env.example provides template"
+
+      python_artifacts:
+        - "__pycache__/"
+        - "*.py[cod]"
+        - "*$py.class"
+        - "*.so"
+        rationale: "Exclude compiled Python files and C extensions"
+
+      testing_artifacts:
+        - ".pytest_cache/"
+        - ".coverage"
+        - "htmlcov/"
+        - "*.cover"
+        rationale: "Exclude test runner and coverage tool artifacts"
+
+      tool_artifacts:
+        - ".mypy_cache/"
+        - ".ruff_cache/"
+        - ".tox/"
+        rationale: "Exclude static analysis tool caches"
+
+      ide_artifacts:
+        - ".vscode/"
+        - ".idea/"
+        - "*.swp"
+        - "*.swo"
+        - "*~"
+        rationale: "Exclude editor-specific configuration files"
+
+      distribution_artifacts:
+        - "dist/"
+        - "build/"
+        - "*.egg-info/"
+        rationale: "Exclude packaging artifacts (not needed for MVP)"
+
+  readme_architecture:
+
+    required_sections:
+      - section: "Project Overview"
+        content:
+          - "Project name and tagline"
+          - "MVP definition from consilium_manifesto.md"
+          - "Technology stack summary (Python 3.11, FastAPI, discord.py)"
+          - "Architecture diagram reference (link to Phase 1 docs)"
+
+      - section: "Prerequisites"
+        content:
+          - "Python 3.11 or higher"
+          - "pip and venv"
+          - "Discord bot token (see Phase 3 setup docs)"
+          - "Git for version control"
+
+      - section: "Setup Instructions"
+        content:
+          - "Clone repository command"
+          - "Virtual environment creation: python -m venv venv"
+          - "Virtual environment activation (platform-specific commands)"
+          - "Dependency installation: pip install -r requirements.txt"
+          - "Environment configuration: cp .env.example .env"
+          - "Environment variable population instructions"
+
+      - section: "Running Locally"
+        content:
+          - "Development server command: uvicorn src.main:app --reload"
+          - "Expected output on startup"
+          - "Health check verification: curl localhost:8000/v1/system/health"
+          - "Troubleshooting common startup issues"
+
+      - section: "Development Workflow"
+        content:
+          - "Code formatting: black src/ tests/"
+          - "Import sorting: isort src/ tests/"
+          - "Type checking: mypy src/"
+          - "Linting: ruff check src/ tests/"
+          - "Running tests: pytest"
+          - "Pre-commit checklist"
+
+      - section: "Project Structure"
+        content:
+          - "Directory tree overview"
+          - "Module responsibilities (api, discord, core)"
+          - "Reference to Phase documentation in docs/"
+
+      - section: "Documentation"
+        content:
+          - "Link to consilium-9_phase_plan.yml"
+          - "Link to Phase 0 documentation (00_COPILOT_README.md)"
+          - "Link to OpenAPI spec (docs/01_spec/02_OPENAPI_SCHEMA.yaml)"
+          - "Contributing guidelines placeholder"
+
+      - section: "License"
+        content:
+          - "License statement (TBD by Chairman)"
+
+data_models: []  # No data models in Phase 2
+
+data_flow: []    # No data flows in Phase 2
+
+error_handling_strategy:
+  scope: "Phase 2 has no runtime code to handle errors"
+  validation_errors: "Detected by acceptance gate Python script; exit code 1"
+  dependency_conflicts: "Detected by pip install failure; manual resolution required"
+
+interface_contracts: []  # No interfaces in Phase 2
+
+performance_considerations:
+  installation_time: "Requirements installation should complete in < 2 minutes on modern hardware"
+  disk_space: "Total project size < 50 MB including dependencies"
+  validation_time: "Acceptance gate should complete in < 10 seconds"
+
+security_architecture:
+  secrets_management:
+    approach: ".env files for local development (gitignored)"
+    production_approach: "Environment variables or secrets manager (Phase 9)"
+    validation: "Acceptance gate verifies .env in .gitignore"
+
+  dependency_security:
+    approach: "Pinned versions reduce supply chain attack surface"
+    monitoring: "Post-MVP: GitHub Dependabot for security advisories"
+    update_policy: "Security patches applied within 48 hours"
+
+testing_strategy:
+  phase_2_scope: "No tests written in Phase 2 (test infrastructure only)"
+  validation: "Acceptance gate verifies pytest runs without errors (0 tests)"
+  future_structure: "tests/ will mirror src/ structure in Phase 7"
+
+deployment_architecture:
+  phase_2_scope: "No deployment in Phase 2 (infrastructure only)"
+  future_consideration: "Docker containerization in Phase 8"
+
+acceptance_criteria:
+  architecture_complete_when:
+    - "Every Blueprint deliverable has implementation specification"
+    - "All file formats and contents are precisely defined"
+    - "Tool configurations specify exact parameters"
+    - "Dependency versions and purposes are documented"
+    - "No ambiguities remain for Implementation phase"
+    - "TECHNICAL_DECISIONS.md updated with key design choices"
+    - "Converted to past tense with status=COMPLETE"
+
+contract:
+  purpose: >
+    Create a reproducible, convention-driven Python 3.11 FastAPI project
+    skeleton with pinned dependencies, tool configs, and environment scaffolds
+    that conform to Phase 1 specifications and the OpenAPI v1.1 contract.
+  inputs:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_01_BLUEPRINT.yaml"
+    - "./phase_01_ARCHITECTURE.yaml"
+    - "./phase_01_IMPLEMENTATION.yaml"
+  outputs:
+    - "src/api/__init__.py"
+    - "src/discord/__init__.py"
+    - "src/core/__init__.py"
+    - "src/main.py"                # empty shell to be expanded in Phase 4
+    - "tests/__init__.py"
+    - "docs/"                      # docs directory exists and is tracked
+    - "requirements.txt"
+    - ".env.example"
+    - ".gitignore"
+    - "pyproject.toml"
+    - "README.md"
+  acceptance:
+    ci_gate: |
+      python -m pip install -r requirements.txt
+      python - <<'PY'
+      import sys, pathlib, re
+      must_exist = [
+        "src/api/__init__.py",
+        "src/discord/__init__.py",
+        "src/core/__init__.py",
+        "src/main.py",
+        "tests/__init__.py",
+        "requirements.txt",
+        ".env.example",
+        ".gitignore",
+        "pyproject.toml",
+        "README.md",
+      ]
+      missing = [p for p in must_exist if not pathlib.Path(p).exists()]
+      if missing:
+          print("Missing:", missing); sys.exit(1)
+      env = pathlib.Path(".env.example").read_text(encoding="utf-8")
+      for key in ["DISCORD_BOT_TOKEN", "DISCORD_GUILD_ID", "DISCORD_CHANNEL_ID", "CONSILIUM_API_KEY", "LOG_LEVEL"]:
+          assert key in env, f"Missing env var in .env.example: {key}"
+      pyproj = pathlib.Path("pyproject.toml").read_text(encoding="utf-8")
+      for tool in ["tool.black", "tool.isort", "tool.mypy"]:
+          assert tool in pyproj, f"Missing {tool} config in pyproject.toml"
+      print("Phase 2 acceptance checks passed.")
+      PY
+    expected: "All checks succeed; missing files = 0; tool configs & env keys present."
+  rollback: "git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md"
+
+ci_gate:
+  commands: |
+    python -m pip install -r requirements.txt
+    ruff check . || echo "No source files yet"
+    mypy . || echo "No source files yet"
+    pytest -q || echo "No tests yet"
+  expected: "Installation succeeds; linter/type checker tolerate empty project; pytest exits 5 (no tests collected)."
+
+rollback_procedure:
+  - "Revert all Phase 2 files: git checkout -- src/ tests/ requirements.txt .env.example .gitignore pyproject.toml README.md docs/"
+  - "If changes span commits: git reset --hard <last_passing_commit>"
+  - "Verify clean state: git status should show no Phase 2 files"
+
+links_and_references:
+  phase_documents:
+    blueprint: "./phase_02_BLUEPRINT.yaml"
+    implementation: "./phase_02_IMPLEMENTATION.yaml"
+    phase_plan: "../consilium-9_phase_plan.yml"
+  
+  source_of_truth:
+    openapi_schema: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    copilot_readme: "../00_parent/00_COPILOT_README.md"
+    ai_agent_rules: "../00_parent/00_AI_AGENT_RULES.md"
+  
+  supporting_documentation:
+    phase_notes: "../PHASE_NOTES.md"
+    technical_decisions: "../TECHNICAL_DECISIONS.md"
+    manifesto: "../consilium_manifesto.md"
+
+version_history:
+  - version: "0.1.0"
+    date: "2025-10-04T19:15:00Z"
+    changes: "Initial Phase 2 Architecture draft; defined directory structure, dependency architecture, tool configurations, environment variables, and README structure"
+    author: "Claude (AI Assistant)"
+    status: "DRAFT"

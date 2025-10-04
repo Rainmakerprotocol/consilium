@@ -1,0 +1,89 @@
+---
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: "{PHASE_ID}_architecture"
+doc_title: "{DOC_TITLE}"
+phase_id: "{PHASE_ID}"                 # e.g. phase_05
+api_version: "v1.1"                      # aligns with OpenAPI spec
+status: "DRAFT"                          # DRAFT | IN_PROGRESS | COMPLETE
+created_utc: "2025-10-03T14:42:45Z"
+last_updated_utc: "2025-10-03T14:42:45Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+cross_doc_relationship:
+  consumes: [blueprint_doc, phase_0_docs]
+  produces: [implementation_doc]
+  updates: [technical_decisions, module_interfaces]
+---
+
+copilot_instructions: |
+  1. Purpose: Define HOW Phase {PHASE_ID} will be implemented (system and modules).
+  2. Conformance: All public interfaces MUST match the Canonical Spec exactly.
+  3. Tense policy: Use future tense while drafting; convert to past tense when COMPLETE.
+  4. Carry forward: Copy the Contract (Purpose/Inputs/Outputs/Acceptance/Rollback) from the Blueprint verbatim.
+  5. Precision: Include module paths, function signatures, and data schemas; avoid narrative descriptions.
+  6. Validation: Provide a CI Gate block with commands and expected success.
+
+sections:
+  module_map: |
+    src/
+      api/
+        routes.py
+        models.py
+      discord/
+        client.py
+        message_handler.py
+      core/
+        config.py
+        logging.py
+      main.py
+
+  interfaces:
+    rest_endpoints:
+      - path: /v1/strategy/start-thread
+        handler: "api.routes.start_thread()"
+      - path: /v1/strategy/post
+        handler: "api.routes.post_message()"
+      - path: /v1/strategy/fetch
+        handler: "api.routes.fetch_messages()"
+      - path: /v1/system/health
+        handler: "api.routes.health()"
+      - path: /v1/system/info
+        handler: "api.routes.info()"
+    internal_apis:
+      - "discord.message_handler.split_message(content: str, max_length: int=2000) -> list[str]"
+      - "discord.message_handler.enqueue_send(thread_id: str, chunks: list[str], attribution: dict) -> None"
+
+  non_functional_requirements:
+    - "Idempotency via X-Idempotency-Key on POST /v1/strategy/post"
+    - "Respect Retry-After headers; never busy-spin"
+    - "80-char lines, explicit type hints, Google-style docstrings"
+
+  contract:                      # must be copied from the Blueprint
+    purpose: "<copied>"
+    inputs:
+      - "<copied>"
+    outputs:
+      - "<copied>"
+    acceptance:
+      ci_gate: |
+        ruff . && mypy . && pytest -q -k "not e2e"
+      expected: "All commands exit with code 0."
+    rollback: "<copied>"
+
+  ci_gate:
+    commands: |
+      ruff .
+      mypy .
+      pytest -q -k "not e2e"
+    expected: "All commands exit with code 0."
+
+  rollback_procedure:
+    - "Revert changed files (list exact paths)."
+    - "If needed, reset to last passing commit."

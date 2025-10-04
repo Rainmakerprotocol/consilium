@@ -1,0 +1,91 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_01_blueprint"
+doc_title: "Phase 1 — System Specifications & Interface Contracts"
+phase_id: "phase_01"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-04T14:22:21Z"
+last_updated_utc: "2025-10-04T14:22:21Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+cross_doc_relationship:
+  consumes: [parent_phase_blueprint, phase_0_docs]
+  produces: [architecture_doc, implementation_doc]
+  updates: [phase_notes, technical_decisions]
+---
+
+copilot_instructions: |
+  1. Purpose: This file defines WHY this phase exists and WHAT it must deliver.
+  2. Read order: First apply Phase-0 rules, then canonical spec, then this Blueprint.
+  3. Tense policy: Use future tense while drafting ("will create"), convert to past tense once COMPLETE.
+  4. Carry forward: Inputs / Outputs / Acceptance blocks must appear identically in ARCHITECTURE and IMPLEMENTATION.
+  5. Validation: All Acceptance criteria must be objective (commands, exit codes, HTTP checks).
+  6. Rollback: Always include reversion steps for files/commits.
+
+sections:
+  summary: >
+    Phase 1 will define the end‑to‑end system specification for the Consilium Relay,
+    including component architecture, data‑flow, and the canonical OpenAPI v1.1 contract.
+    This phase will produce machine‑verifiable specs that downstream phases (repo scaffold,
+    core framework, endpoints, Discord integration, tests, and containerization) will
+    implement without ambiguity. Non‑goals: building code or writing tests—only specs.
+
+  contract:
+    purpose: >
+      Establish a complete, testable specification for the relay: component architecture,
+      data flows, and an authoritative OpenAPI schema with models and error contracts.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "../consilium-9_phase_plan.yml"
+      - "../consilium_manifesto.md"
+    outputs:
+      - "../01_spec/01_SYSTEM_SPEC.yaml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "../03_DATA_MODELS.md"
+    acceptance:
+      ci_gate: |
+        ruff . && mypy . && pytest -q
+      expected: "All commands exit with code 0."
+    rollback: "git checkout -- ../01_spec/01_SYSTEM_SPEC.yaml ../01_spec/02_OPENAPI_SCHEMA.yaml ../03_DATA_MODELS.md"
+
+  deliverables:
+    - "../01_spec/01_SYSTEM_SPEC.yaml # Component architecture (relay, Discord bot, API), data-flow diagrams refs, integration points"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml # OpenAPI 3.0.3; v1.1 endpoints; errors (400/401/404/429); headers; security scheme"
+    - "../03_DATA_MODELS.md # Pydantic model map, field constraints, validation rules, example payloads"
+
+  success_criteria:
+    - "OpenAPI schema validates with openapi-spec-validator"
+    - "All request/response objects have explicit field constraints"
+    - "Error responses documented with machine-readable 'error' codes"
+    - "Headers documented for auth and idempotency where applicable"
+    - "pytest exit code 0 (no tests added, but suite still passes)"
+    - "GET /v1/system/health present in spec and returns schema 'HealthResponse'"
+    - "Coverage gates defined for downstream phases (not enforced here)"
+
+  risks_and_mitigations:
+    - "Spec drift across phases -> Mitigation: Treat OpenAPI as source of truth; PR check validates schema"
+    - "Ambiguous error models -> Mitigation: Require 'error', 'message', 'details' fields for all errors"
+    - "Discord rate limits assumptions -> Mitigation: document 202 'accepted' path with Retry-After guidance"
+    - "Idempotency ambiguity -> Mitigation: define optional 'X-Idempotency-Key' and semantics for POST /v1/strategy/post"
+    - "Multi-tenancy future-proofing -> Mitigation: include optional 'room_id' field; keep non-breaking"
+
+  rollback_procedure:
+    - "Revert changed files: git checkout -- ../01_spec/01_SYSTEM_SPEC.yaml ../01_spec/02_OPENAPI_SCHEMA.yaml ../03_DATA_MODELS.md"
+    - "If rollback crosses commits: git reset --hard <last_passing_commit>"
+
+  cross_doc_links:
+    architecture: "./phase_01_ARCHITECTURE.yaml"
+    implementation: "./phase_01_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0001-openapi-as-source-of-truth.md"
+      - "../adr/ADR-0002-discord-rate-limits-and-queueing.md"
+      - "../adr/ADR-0003-idempotency-key-policy.md"

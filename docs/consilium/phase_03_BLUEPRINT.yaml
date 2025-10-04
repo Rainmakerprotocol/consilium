@@ -1,0 +1,149 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_03_blueprint"
+doc_title: "Phase 3 — Discord Infrastructure Setup — Blueprint"
+phase_id: "phase_03"
+api_version: "v1.1"                     # aligns with OpenAPI spec
+status: "DRAFT"
+created_utc: "2025-10-04T18:34:06Z"
+last_updated_utc: "2025-10-04T18:34:06Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_02_BLUEPRINT.yaml"
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "./phase_02_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "./phase_03_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 3 exists and WHAT must be delivered to stand up
+     Discord infrastructure for the relay.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phase 1/2 docs →
+     This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 3 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable where
+     feasible (preflight checks); operational checks are documented in
+     docs/04_DISCORD_SETUP.md.
+  6. Non-goals: No API/Discord client code; no rate-limit logic; no message
+     handlers. This phase is **manual-only** (no automation by Copilot).
+
+sections:
+
+  summary: >
+    Phase 3 will provision the Discord-side infrastructure required by the
+    Consilium relay: registering a bot in the Discord Developer Portal, enabling
+    Message Content intent, creating/obtaining a Discord server and channel for
+    Consilium threads, inviting the bot with the correct scopes/permissions, and
+    recording runtime configuration in a local .env (kept out of version control).
+    Outputs include a step-by-step setup guide with screenshots and a populated
+    .env file for local development. No application code is changed in this phase.
+
+  contract:
+    purpose: >
+      Establish Discord credentials and server configuration (bot, intents,
+      permissions, IDs) and record them in a local .env so later phases can
+      integrate programmatically without ambiguity.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_02_BLUEPRINT.yaml"
+      - "./phase_02_ARCHITECTURE.yaml"
+      - "./phase_02_IMPLEMENTATION.yaml"
+    outputs:
+      - ".env"                       # populated locally; never committed
+      - "docs/04_DISCORD_SETUP.md"   # step-by-step guide with checklist
+      - "docs/assets/discord_setup/" # screenshots folder referenced by the guide
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import os, re, sys, pathlib
+        # 1) .env exists and includes sane values
+        envp = pathlib.Path(".env")
+        assert envp.exists(), ".env missing"
+        env = envp.read_text(encoding="utf-8")
+        def get(k):
+            m = re.search(rf'^{re.escape(k)}=(.+)$', env, flags=re.M)
+            return m.group(1).strip() if m else None
+        token = get("DISCORD_BOT_TOKEN")
+        guild = get("DISCORD_GUILD_ID")
+        channel = get("DISCORD_CHANNEL_ID")
+        api = get("CONSILIUM_API_KEY")
+        log = get("LOG_LEVEL")
+        assert token and len(token) >= 50, "DISCORD_BOT_TOKEN invalid (len)"
+        assert guild and re.fullmatch(r"\d{{18,20}}", guild), "DISCORD_GUILD_ID invalid"
+        assert channel and re.fullmatch(r"\d{{18,20}}", channel), "DISCORD_CHANNEL_ID invalid"
+        assert api and len(api) >= 16, "CONSILIUM_API_KEY invalid (len)"
+        assert (log or "INFO") in {{"DEBUG","INFO","WARNING","ERROR","CRITICAL"}}, "LOG_LEVEL invalid"
+        # 2) Setup doc has checklist marks
+        docp = pathlib.Path("docs/04_DISCORD_SETUP.md")
+        assert docp.exists(), "docs/04_DISCORD_SETUP.md missing"
+        doc = docp.read_text(encoding="utf-8")
+        required = [
+          "[x] Bot registered in Developer Portal",
+          "[x] Message Content intent enabled",
+          "[x] Bot invited to server with correct permissions",
+          "[x] Token stored in .env (not committed)",
+          "[x] Guild and Channel IDs captured",
+          "[x] Bot visible in server member list",
+        ]
+        missing = [r for r in required if r not in doc]
+        assert not missing, "Setup checklist incomplete: " + ", ".join(missing)
+        print("Phase 3 acceptance checks passed.")
+        PY
+      expected: "All checks succeed; .env values sane; setup doc includes completed checklist."
+    rollback: "git checkout -- docs/04_DISCORD_SETUP.md; rm -f .env"
+
+  deliverables:
+    - "Discord bot registered in Developer Portal (application + bot user)."
+    - "Message Content intent enabled."
+    - "Bot invited to the target server with required permissions (Send Messages, Read Message History, Create Public Threads)."
+    - ".env populated with: DISCORD_BOT_TOKEN, DISCORD_GUILD_ID, DISCORD_CHANNEL_ID, CONSILIUM_API_KEY, LOG_LEVEL."
+    - "docs/04_DISCORD_SETUP.md with screenshots and a completed checklist."
+    - "docs/assets/discord_setup/ containing referenced screenshots."
+
+  success_criteria:
+    - "Bot appears in server member list."
+    - "Bot has Send Messages and Read Message History permissions in #consilium-architecture."
+    - ".env validation passes (token length ≥ 50; IDs are 18–20 digits)."
+    - "docs/04_DISCORD_SETUP.md contains the completed checklist and links to screenshots."
+
+  risks_and_mitigations:
+    - "Token leakage → Store only in .env (gitignored); rotate token immediately if exposed; document rotation steps."
+    - "Incorrect intents → Explicitly enable Message Content intent; include screenshot in guide."
+    - "Insufficient permissions → Use an invite URL with the correct scopes/permissions; verify channel overrides."
+    - "Wrong IDs captured → Enable Developer Mode; copy IDs directly; include how-to in guide."
+
+  rollback_procedure:
+    - "Revoke/rotate bot token in Developer Portal; update .env accordingly."
+    - "Remove bot from server and re-invite with correct scopes if permissions are wrong."
+    - "Revert documentation changes if inaccurate; update screenshots as needed."
+
+  cross_doc_links:
+    architecture: "./phase_03_ARCHITECTURE.yaml"
+    implementation: "./phase_03_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0003-discord-intents-and-permissions.md"
