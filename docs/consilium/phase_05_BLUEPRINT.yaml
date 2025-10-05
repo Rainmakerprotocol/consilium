@@ -1,0 +1,160 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_05_blueprint"
+doc_title: "Phase 5 — API Endpoints with Mock Responses — Blueprint"
+phase_id: "phase_05"
+api_version: "v1.1"                     # aligns with OpenAPI spec
+status: "DRAFT"
+created_utc: "2025-10-05T12:00:12Z"
+last_updated_utc: "2025-10-05T12:00:12Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_01_BLUEPRINT.yaml"
+    - "./phase_01_ARCHITECTURE.yaml"
+    - "./phase_01_IMPLEMENTATION.yaml"
+    - "./phase_02_BLUEPRINT.yaml"
+    - "./phase_02_ARCHITECTURE.yaml"
+    - "./phase_02_IMPLEMENTATION.yaml"
+    - "./phase_03_BLUEPRINT.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "./phase_03_IMPLEMENTATION.yaml"
+    - "./phase_04_BLUEPRINT.yaml"
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 5 exists and WHAT must be delivered to implement
+     the Strategy API endpoints against the canonical spec, using **mocked**
+     Discord behavior.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phases 1–4 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 5 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable.
+  6. Non-goals: No live Discord calls or client wiring; that is Phase 6.
+
+sections:
+
+  summary: >
+    Phase 5 will implement the Strategy endpoints defined in the OpenAPI spec,
+    returning **realistic mocked responses** that conform exactly to the schema.
+    Endpoints include:
+      - POST /v1/strategy/start-thread (201 Created; mock thread_id + URL)
+      - POST /v1/strategy/post (201 Created or 202 Accepted; split-aware IDs)
+      - GET  /v1/strategy/fetch (200 OK; normalized message list)
+    The server will enforce API key authentication, validate request bodies with
+    Pydantic models, honor the optional X-Idempotency-Key header, and return
+    OpenAPI-compliant error objects (400/401/404/429). Route handlers must be
+    written to allow a **drop-in swap** to the real Discord client in Phase 6.
+
+  contract:
+    purpose: >
+      Implement the Strategy API contract with mocked Discord behavior so that
+      downstream phases can proceed without external dependencies. Ensure route
+      signatures, status codes, headers, and response shapes match the canonical
+      spec to the letter.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_04_BLUEPRINT.yaml"
+      - "./phase_04_ARCHITECTURE.yaml"
+      - "./phase_04_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/api/models.py"
+      - "src/api/routes.py"
+      - "src/api/dependencies.py"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        from fastapi.testclient import TestClient
+        from importlib import import_module
+
+        app = import_module("src.main").app
+        client = TestClient(app)
+
+        # 401 when API key is missing
+        r = client.post("/v1/strategy/start-thread", json={{"title":"t"}})
+        assert r.status_code == 401, r.text
+
+        # With API key
+        headers = {{"X-Consilium-Api-Key": "test_key"}}
+
+        # 400 on bad payload
+        r = client.post("/v1/strategy/start-thread", headers=headers, json={{}})
+        assert r.status_code == 400, r.text
+
+        # 201 on valid start-thread
+        r = client.post("/v1/strategy/start-thread", headers=headers, json={{"title":"Demo"}})
+        assert r.status_code == 201, r.text
+        body = r.json(); assert "thread_id" in body and "url" in body
+
+        # 201/202 on post (idempotency key optional)
+        r = client.post("/v1/strategy/post", headers=headers, json={{
+            "thread_id": "123",
+            "author": {{"agent":"ChatGPT","model":"gpt-5-thinking","run_id":"run1"}},
+            "content": "hello"
+        }})
+        assert r.status_code in (201,202), r.text
+        body = r.json(); assert "message_ids" in body
+
+        # 200 on fetch with messages[]
+        r = client.get("/v1/strategy/fetch", headers=headers, params={{"thread_id":"123"}})
+        assert r.status_code == 200, r.text
+        body = r.json(); assert "messages" in body and isinstance(body["messages"], list)
+        print("Phase 5 preflight passed.")
+        PY
+      expected: "All assertions pass; endpoints mounted and return schema-compliant mocks."
+    rollback: "git checkout -- src/api/models.py src/api/routes.py src/api/dependencies.py"
+
+  deliverables:
+    - "src/api/models.py — Pydantic v2 models mapping 1:1 to OpenAPI components."
+    - "src/api/routes.py — FastAPI route handlers for Strategy endpoints with mocked behavior."
+    - "src/api/dependencies.py — API key validator and rate-limit stub (no real limits yet)."
+    - "Route registration in src/main.py (mount /v1 routes) — no logic changes outside registration."
+
+  success_criteria:
+    - "Routes exist and return status codes per spec (201/202/200; errors 400/401/404/429)."
+    - "Pydantic models mirror OpenAPI schemas exactly."
+    - "Idempotency honored: duplicate POST with same X-Idempotency-Key is safe."
+    - "Mock responses include realistic IDs, timestamps, and URLs."
+    - "No Discord calls are made in this phase; code structured for Phase 6 swap."
+
+  risks_and_mitigations:
+    - "Schema drift → Use OpenAPI as authority; CI preflight validates basic shapes."
+    - "Auth inconsistencies → Centralize API key check in dependencies.py."
+    - "Mock-to-real coupling → Keep mocks behind interfaces; keep message handler calls abstract."
+    - "Rate-limit confusion → Return 202/Retry-After only when mock queue is exercised; document behavior."
+
+  rollback_procedure:
+    - "Revert file changes: git checkout -- src/api/models.py src/api/routes.py src/api/dependencies.py"
+    - "If rollback spans commits, reset branch to last passing commit."
+
+  cross_doc_links:
+    architecture: "./phase_05_ARCHITECTURE.yaml"
+    implementation: "./phase_05_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0005-mock-to-real-transition.md"

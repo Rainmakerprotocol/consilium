@@ -1,0 +1,149 @@
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: phase_05_architecture
+doc_title: "Phase 5 \u2014 API Endpoints with Mock Responses \u2014 Architecture"
+phase_id: phase_05
+api_version: v1.1
+status: DRAFT
+created_utc: '2025-10-05T14:03:31Z'
+last_updated_utc: '2025-10-05T14:03:31Z'
+canonical_spec_path: ../01_spec/02_OPENAPI_SCHEMA.yaml
+authority_order:
+- 00_AI_AGENT_RULES.md
+- BLUEPRINT
+- ARCHITECTURE
+- IMPLEMENTATION
+audience:
+- copilot
+- ai_agents
+- human_developers
+update_protocol: tense_management
+cross_doc_relationship:
+  consumes:
+  - ./phase_05_BLUEPRINT.yaml
+  - ../00_parent/00_COPILOT_README.md
+  - ../01_spec/02_OPENAPI_SCHEMA.yaml
+  - ./phase_04_BLUEPRINT.yaml
+  - ./phase_04_ARCHITECTURE.yaml
+  - ./phase_04_IMPLEMENTATION.yaml
+  produces:
+  - ./phase_05_IMPLEMENTATION.yaml
+  updates:
+  - ../TECHNICAL_DECISIONS.md
+  - ../PHASE_NOTES.md
+copilot_instructions: '1. Purpose: Define HOW to implement Phase 5 Strategy endpoints
+  with mocked behavior.
+
+  2. Conformance: Public interfaces MUST match the canonical OpenAPI v1.1 spec exactly.
+
+  3. Tense: Use future tense while DRAFT; convert to past tense when COMPLETE.
+
+  4. Carry forward: Copy the Contract block verbatim from the Blueprint.
+
+  5. Validation: CI Gate must be scriptable and deterministic; preflight asserts basic
+  behavior.'
+sections:
+  module_map: "src/\n  api/\n    models.py\n    routes.py\n    dependencies.py\n \
+    \ discord/\n    client.py\n    message_handler.py\n  core/\n    config.py\n  \
+    \  logging.py\n  main.py\n\ntests/\n  conftest.py\n  test_routes.py\n  test_models.py\n"
+  interfaces:
+    rest_endpoints:
+    - path: /v1/strategy/start-thread
+      handler: api.routes.start_thread()
+    - path: /v1/strategy/post
+      handler: api.routes.post_message()
+    - path: /v1/strategy/fetch
+      handler: api.routes.fetch_messages()
+    - path: /v1/system/health
+      handler: 'api.routes.health  # Phase 4'
+    - path: /v1/system/info
+      handler: 'api.routes.info    # Phase 4'
+    internal_apis:
+    - 'api.dependencies.verify_api_key(api_key: str | None) -> None'
+    - api.dependencies.get_idempotency_cache() -> IdemCacheProtocol
+    - api.dependencies.get_mock_store() -> MockStoreProtocol
+    - api.dependencies.get_mock_queue() -> MockQueueProtocol
+    - 'api.routes._split_preserve_fences(content: str, max_length: int = 2000) ->
+      list[str]'
+  non_functional_requirements:
+  - Idempotency via optional X-Idempotency-Key; TTL-limited dedupe.
+  - Mock responses deterministic & realistic (ISO 8601 UTC, IDs/URLs).
+  - Return 202 + Retry-After only when mock queue exercised; else 201.
+  - 80-char lines; explicit type hints; Google-style docstrings.
+  - No real Discord calls in Phase 5; prepare for Phase 6 swap.
+  contract:
+    purpose: Implement the Strategy API contract with mocked Discord behavior so that
+      downstream phases can proceed without external dependencies. Ensure route signatures,
+      status codes, headers, and response shapes match the canonical spec to the letter.
+    inputs:
+    - ../00_parent/00_COPILOT_README.md
+    - ../consilium-9_phase_plan.yml
+    - ../01_spec/02_OPENAPI_SCHEMA.yaml
+    - ./phase_04_BLUEPRINT.yaml
+    - ./phase_04_ARCHITECTURE.yaml
+    - ./phase_04_IMPLEMENTATION.yaml
+    outputs:
+    - src/api/models.py
+    - src/api/routes.py
+    - src/api/dependencies.py
+    acceptance:
+      ci_gate: 'python - <<''PY''\nfrom fastapi.testclient import TestClient\nfrom
+        importlib import import_module\napp = import_module(''src.main'').app\nclient
+        = TestClient(app)\nr = client.post(''/v1/strategy/start-thread'', json={''title'':''t''})\nassert
+        r.status_code == 401, r.text\nheaders = {''X-Consilium-Api-Key'': ''test_key''}\nr
+        = client.post(''/v1/strategy/start-thread'', headers=headers, json={})\nassert
+        r.status_code == 400, r.text\nr = client.post(''/v1/strategy/start-thread'',
+        headers=headers, json={''title'':''Demo''})\nassert r.status_code == 201,
+        r.text\nbody = r.json(); assert ''thread_id'' in body and ''url'' in body\nr
+        = client.post(''/v1/strategy/post'', headers=headers, json={''thread_id'':''123'',''author'':{''agent'':''ChatGPT'',''model'':''gpt-5-thinking'',''run_id'':''run1''},''content'':''hello''})\nassert
+        r.status_code in (201,202), r.text\nbody = r.json(); assert ''message_ids''
+        in body\nr = client.get(''/v1/strategy/fetch'', headers=headers, params={''thread_id'':''123''})\nassert
+        r.status_code == 200, r.text\nbody = r.json(); assert ''messages'' in body
+        and isinstance(body[''messages''], list)\nprint(''Phase 5 preflight passed.'')\nPY'
+      expected: All assertions pass; endpoints mounted and return schema-compliant
+        mocks.
+    rollback: git checkout -- src/api/models.py src/api/routes.py src/api/dependencies.py
+ci_gate:
+  commands: 'ruff .
+
+    mypy .
+
+    python - <<''PY''
+
+    from fastapi.testclient import TestClient
+
+    from importlib import import_module
+
+    app = import_module(''src.main'').app
+
+    client = TestClient(app)
+
+    r = client.post(''/v1/strategy/start-thread'', json={''title'':''t''})
+
+    assert r.status_code == 401, r.text
+
+    headers = {''X-Consilium-Api-Key'':''test_key''}
+
+    r = client.post(''/v1/strategy/start-thread'', headers=headers, json={})
+
+    assert r.status_code == 400, r.text
+
+    r = client.post(''/v1/strategy/start-thread'', headers=headers, json={''title'':''Demo''})
+
+    assert r.status_code == 201, r.text
+
+    r = client.post(''/v1/strategy/post'', headers=headers, json={''thread_id'':''123'',''author'':{''agent'':''ChatGPT'',''model'':''gpt-5-thinking'',''run_id'':''run1''},''content'':''hello''})
+
+    assert r.status_code in (201,202), r.text
+
+    r = client.get(''/v1/strategy/fetch'', headers=headers, params={''thread_id'':''123''})
+
+    assert r.status_code == 200, r.text
+
+    print(''Phase 5 architecture preflight passed.'')
+
+    PY'
+  expected: Linters pass; endpoint preflights succeed with mocked behavior.
+rollback_procedure:
+- Revert created/modified files listed in Contract.outputs.
+- If needed, reset to last passing commit.
