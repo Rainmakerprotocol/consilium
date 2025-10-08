@@ -8,7 +8,7 @@ api_version: "v1.1"                     # aligns with OpenAPI spec
 status: "DRAFT"
 created_utc: "2025-10-05T12:00:12Z"
 last_updated_utc: "2025-10-05T12:00:12Z"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
   - "00_AI_AGENT_RULES.md"
@@ -23,7 +23,7 @@ cross_doc_relationship:
   consumes:
     - "../00_parent/00_COPILOT_README.md"
     - "../consilium-9_phase_plan.yml"
-    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_01_BLUEPRINT.yaml"
     - "./phase_01_ARCHITECTURE.yaml"
     - "./phase_01_IMPLEMENTATION.yaml"
@@ -78,8 +78,8 @@ sections:
       spec to the letter.
     inputs:
       - "../00_parent/00_COPILOT_README.md"
-      - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+  - "../consilium-9_phase_plan.yml"
+  - "../../consilium-openapi-v1.1.yaml"
       - "./phase_04_BLUEPRINT.yaml"
       - "./phase_04_ARCHITECTURE.yaml"
       - "./phase_04_IMPLEMENTATION.yaml"

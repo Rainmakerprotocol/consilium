@@ -132,7 +132,7 @@ sections:
     inputs:
       - "../00_parent/00_COPILOT_README.md"
       - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../../consilium-openapi-v1.1.yaml"
       - "./phase_01_BLUEPRINT.yaml"
       - "./phase_01_ARCHITECTURE.yaml"
       - "./phase_01_IMPLEMENTATION.yaml"
@@ -863,9 +863,9 @@ step_11_create_readme_md:
 
     - **Phase Plan**: [consilium-9_phase_plan.yml](consilium-9_phase_plan.yml)
     - **Copilot Guide**: [00_COPILOT_README.md](docs/00_COPILOT_README.md)
-    - **OpenAPI Spec**: [02_OPENAPI_SCHEMA.yaml](docs/01_spec/02_OPENAPI_SCHEMA.yaml)
-    - **System Architecture**: [01_SYSTEM_SPEC.yaml](docs/01_spec/01_SYSTEM_SPEC.yaml)
-    - **Manifesto**: [consilium_manifesto.md](consilium_manifesto.md)
+  - **OpenAPI Spec**: [consilium-openapi-v1.1.yaml](../../consilium-openapi-v1.1.yaml)
+  - **System Architecture**: [00_PROJECT_MISSION.yml](../consilium/00_PROJECT_MISSION.yml)
+  - **Manifesto**: *(pending migration — see Phase 1 documentation)*
 
     ---
 

@@ -8,7 +8,7 @@ api_version: "v1.1"
 status: "DRAFT"
 created_utc: "2025-10-05T17:00:00Z"
 last_updated_utc: "2025-10-05T17:00:00Z"
-canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
   - "00_AI_AGENT_RULES.md"
@@ -24,7 +24,7 @@ cross_doc_relationship:
     - "./phase_06_BLUEPRINT.yaml"
     - "./phase_06_ARCHITECTURE.yaml"
     - "../00_parent/00_COPILOT_README.md"
-    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_05_IMPLEMENTATION.yaml"
     - "./phase_03_IMPLEMENTATION.yaml"
   produces:
@@ -125,7 +125,7 @@ sections:
     inputs:
       - "../00_parent/00_COPILOT_README.md"
       - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../../consilium-openapi-v1.1.yaml"
       - "./phase_05_BLUEPRINT.yaml"
       - "./phase_05_ARCHITECTURE.yaml"
       - "./phase_05_IMPLEMENTATION.yaml"

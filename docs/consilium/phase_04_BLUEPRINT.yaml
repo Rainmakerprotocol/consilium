@@ -69,8 +69,8 @@ sections:
       /v1/system/health and /v1/system/info per the canonical API.
     inputs:
       - "../00_parent/00_COPILOT_README.md"
-      - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+  - "../consilium-9_phase_plan.yml"
+  - "../../consilium-openapi-v1.1.yaml"
       - "./phase_01_BLUEPRINT.yaml"
       - "./phase_01_ARCHITECTURE.yaml"
       - "./phase_01_IMPLEMENTATION.yaml"
