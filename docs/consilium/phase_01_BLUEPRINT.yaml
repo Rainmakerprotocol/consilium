@@ -44,23 +44,23 @@ sections:
       data flows, and an authoritative OpenAPI schema with models and error contracts.
     inputs:
       - "./00_COPILOT_INSTRUCTIONS.yml"
-      - "../../consilium-openapi-v1.1.yaml"
-      - "../../consilium-9_phase_plan.yml"
-      - "../../consilium_manifesto.md"
+  - "../../consilium-openapi-v1.1.yaml"
+  - "../../consilium-9_phase_plan.yml"
+  - "../00_PROJECT_MISSION.yml"
     outputs:
-      - "../01_spec/01_SYSTEM_SPEC.yaml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
-      - "../03_DATA_MODELS.md"
+      - "./01_SYSTEM_SPEC.md"
+      - "../../consilium-openapi-v1.1.yaml"
+      - "./03_DATA_MODELS.md"
     acceptance:
       ci_gate: |
         ruff . && mypy . && pytest -q
       expected: "All commands exit with code 0."
-    rollback: "git checkout -- ../01_spec/01_SYSTEM_SPEC.yaml ../01_spec/02_OPENAPI_SCHEMA.yaml ../03_DATA_MODELS.md"
+  rollback: "git checkout -- docs/consilium/01_SYSTEM_SPEC.md consilium-openapi-v1.1.yaml docs/consilium/03_DATA_MODELS.md"
 
   deliverables:
-    - "../01_spec/01_SYSTEM_SPEC.yaml # Component architecture (relay, Discord bot, API), data-flow diagrams refs, integration points"
-    - "../01_spec/02_OPENAPI_SCHEMA.yaml # OpenAPI 3.0.3; v1.1 endpoints; errors (400/401/404/429); headers; security scheme"
-    - "../03_DATA_MODELS.md # Pydantic model map, field constraints, validation rules, example payloads"
+    - "./01_SYSTEM_SPEC.md # Component architecture (relay, Discord bot, API), data-flow diagrams refs, integration points"
+    - "../../consilium-openapi-v1.1.yaml # OpenAPI 3.0.3; v1.1 endpoints; errors (400/401/404/429); headers; security scheme"
+    - "./03_DATA_MODELS.md # Pydantic model map, field constraints, validation rules, example payloads"
 
   success_criteria:
     - "OpenAPI schema validates with openapi-spec-validator"
@@ -79,7 +79,7 @@ sections:
     - "Multi-tenancy future-proofing -> Mitigation: include optional 'room_id' field; keep non-breaking"
 
   rollback_procedure:
-    - "Revert changed files: git checkout -- ../01_spec/01_SYSTEM_SPEC.yaml ../01_spec/02_OPENAPI_SCHEMA.yaml ../03_DATA_MODELS.md"
+  - "Revert changed files: git checkout -- docs/consilium/01_SYSTEM_SPEC.md consilium-openapi-v1.1.yaml docs/consilium/03_DATA_MODELS.md"
     - "If rollback crosses commits: git reset --hard <last_passing_commit>"
 
   cross_doc_links:

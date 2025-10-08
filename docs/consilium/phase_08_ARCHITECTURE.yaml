@@ -112,8 +112,8 @@ sections:
     purpose: "Package the relay as a reproducible Docker image and a compose service for consistent local execution and pre-deployment verification."
     inputs:
       - "../00_parent/00_COPILOT_README.md"
-      - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../consilium-9_phase_plan.yml"
+    - "../../consilium-openapi-v1.1.yaml"
       - "./phase_04_BLUEPRINT.yaml"
       - "./phase_04_ARCHITECTURE.yaml"
       - "./phase_04_IMPLEMENTATION.yaml"

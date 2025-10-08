@@ -90,8 +90,8 @@ sections:
     purpose: "Deploy the relay and prove end‑to‑end functionality with a real, attributed multi‑AI session (Chairman + Claude via MCP + ChatGPT via Custom GPT)."
     inputs:
       - "../00_parent/00_COPILOT_README.md"
-      - "../consilium-9_phase_plan.yml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../consilium-9_phase_plan.yml"
+    - "../../consilium-openapi-v1.1.yaml"
       - "./phase_08_BLUEPRINT.yaml"
       - "./phase_08_ARCHITECTURE.yaml"
       - "./phase_08_IMPLEMENTATION.yaml"

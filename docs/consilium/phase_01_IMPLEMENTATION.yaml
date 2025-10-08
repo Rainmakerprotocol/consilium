@@ -18,7 +18,7 @@ audience: [copilot, ai_agents, human_developers]
 update_protocol: "tense_management"
 cross_doc_relationship:
   consumes: ["./phase_01_BLUEPRINT.yaml", "./phase_01_ARCHITECTURE.yaml", "./00_COPILOT_INSTRUCTIONS.yml"]
-  produces: ["../01_spec/01_SYSTEM_SPEC.yaml", "../01_spec/02_OPENAPI_SCHEMA.yaml", "../01_spec/03_DATA_MODELS.md"]
+  produces: ["./01_SYSTEM_SPEC.md", "../../consilium-openapi-v1.1.yaml", "./03_DATA_MODELS.md"]
   updates: ["../PHASE_NOTES.md", "../TECHNICAL_DECISIONS.md"]
 ---
 
@@ -33,27 +33,27 @@ copilot_instructions: |
 
 sections:
   steps:
-    - "Create docs/01_spec/01_SYSTEM_SPEC.yaml with: Component architecture, data-flow diagrams (request→processing→response), and integration points (Discord API, AI clients)."
-    - "Create docs/01_spec/02_OPENAPI_SCHEMA.yaml (OpenAPI 3.0.3) including: servers, tags, ApiKey security (header: X-Consilium-Api-Key), and all required paths."
+  - "Create docs/consilium/01_SYSTEM_SPEC.md with: component architecture, data-flow diagrams (request→processing→response), and integration points (Discord API, AI clients)."
+  - "Update consilium-openapi-v1.1.yaml (OpenAPI 3.0.3) ensuring: servers, tags, ApiKey security (header: X-Consilium-Api-Key), and all required paths."
     - "In the schema, include /v1/system/health and /v1/system/info (System tag)."
     - "In the schema, include /v1/strategy/start-thread, /v1/strategy/post, /v1/strategy/fetch (Strategy tag) with request/response bodies and examples."
     - "Define components/schemas exactly: HealthResponse, InfoResponse, StartThreadRequest/Response, PostMessageRequest/Response, FetchMessagesResponse, Message, Author, Error."
     - "Model headers: X-Idempotency-Key (request, optional on POST /v1/strategy/post), X-RateLimit-Remaining (response header), Retry-After (429 and 202 cases)."
-    - "Create docs/01_spec/03_DATA_MODELS.md: Pydantic model mapping table for each schema (fields, constraints, examples of valid/invalid payloads)."
+  - "Create docs/consilium/03_DATA_MODELS.md: Pydantic model mapping table for each schema (fields, constraints, examples of valid/invalid payloads)."
     - "Ensure examples in request/response bodies validate against schemas (strict types, enums, formats)."
     - "Run openapi-spec-validator on the schema and resolve all errors."
     - "Record any key decisions in ../TECHNICAL_DECISIONS.md and cross-link from Phase Notes."
   outputs:
-    - "docs/01_spec/01_SYSTEM_SPEC.yaml"
-    - "docs/01_spec/02_OPENAPI_SCHEMA.yaml"
-    - "docs/01_spec/03_DATA_MODELS.md"
+  - "docs/consilium/01_SYSTEM_SPEC.md"
+  - "consilium-openapi-v1.1.yaml"
+  - "docs/consilium/03_DATA_MODELS.md"
   post_validation:
     commands: |
-      openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+  openapi-spec-validator consilium-openapi-v1.1.yaml
       python - <<'PY'
       import sys, pathlib
       # Simple presence and content checks (non-exhaustive) for MVP
-      schema = pathlib.Path('docs/01_spec/02_OPENAPI_SCHEMA.yaml').read_text(encoding='utf-8')
+  schema = pathlib.Path('consilium-openapi-v1.1.yaml').read_text(encoding='utf-8')
       required_snippets = [
           '/v1/system/health',
           '/v1/system/info',
@@ -84,20 +84,20 @@ sections:
       - "../../consilium-9_phase_plan.yml"
       - "../consilium_manifesto.md"
     outputs:
-      - "../01_spec/01_SYSTEM_SPEC.yaml"
-      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
-      - "../01_spec/03_DATA_MODELS.md"
+      - "./01_SYSTEM_SPEC.md"
+      - "../../consilium-openapi-v1.1.yaml"
+      - "./03_DATA_MODELS.md"
     acceptance:
       ci_gate: |
-        openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+        openapi-spec-validator consilium-openapi-v1.1.yaml
       expected: "OpenAPI schema validates with no errors; all referenced schemas are defined."
-    rollback: "git checkout -- docs/01_spec/"
+    rollback: "git checkout -- consilium-openapi-v1.1.yaml"
 
   ci_gate:
     commands: |
-      openapi-spec-validator docs/01_spec/02_OPENAPI_SCHEMA.yaml
+      openapi-spec-validator consilium-openapi-v1.1.yaml
     expected: "OpenAPI schema validates successfully."
 
   rollback_procedure:
-    - "Revert changed spec files: git checkout -- docs/01_spec/"
+  - "Revert OpenAPI spec changes: git checkout -- consilium-openapi-v1.1.yaml"
     - "If necessary, reset to the last passing commit."

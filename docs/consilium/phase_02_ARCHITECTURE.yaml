@@ -419,7 +419,7 @@ system_architecture:
         content:
           - "Link to consilium-9_phase_plan.yml"
           - "Link to Phase 0 documentation (00_COPILOT_INSTRUCTIONS.yml)"
-          - "Link to OpenAPI spec (docs/01_spec/02_OPENAPI_SCHEMA.yaml)"
+          - "Link to OpenAPI spec (../../consilium-openapi-v1.1.yaml)"
           - "Contributing guidelines placeholder"
 
       - section: "License"

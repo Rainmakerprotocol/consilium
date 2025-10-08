@@ -24,7 +24,7 @@ cross_doc_relationship:
     - "./phase_07_BLUEPRINT.yaml"
     - "./phase_07_ARCHITECTURE.yaml"
     - "../00_parent/00_COPILOT_README.md"
-    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_05_IMPLEMENTATION.yaml"
     - "./phase_06_IMPLEMENTATION.yaml"
   produces:
