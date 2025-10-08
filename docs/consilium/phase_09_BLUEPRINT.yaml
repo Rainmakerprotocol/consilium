@@ -1,0 +1,139 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_09_blueprint"
+doc_title: "Phase 9 — Deployment & MVP Validation — Blueprint"
+phase_id: "phase_09"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-08T01:32:31Z"
+last_updated_utc: "2025-10-08T01:32:31Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_07_BLUEPRINT.yaml"
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+    - "./phase_08_BLUEPRINT.yaml"
+    - "./phase_08_ARCHITECTURE.yaml"
+    - "./phase_08_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_09_ARCHITECTURE.yaml"
+    - "./phase_09_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 9 exists and WHAT must be delivered to deploy
+     the relay and validate an end-to-end, multi‑AI MVP session.
+  2. Read order: Phase‑0 rules → Canonical OpenAPI v1.1 → Phases 7–8 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 9 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable where
+     feasible; live checks are manual/observed with logs and ADRs.
+  6. Scope: Deployment targets Railway/Fly.io/Render (choose one); docs must
+     include templates for all three. No API changes.
+
+sections:
+
+  summary: >
+    Phase 9 deploys the Consilium Relay to a managed platform (Railway/Fly.io/Render),
+    exposes a public URL, and runs the first “Consilium session” where Chairman,
+    Claude (via MCP), and ChatGPT (via Custom GPT) all post and read messages
+    in a shared Discord thread. Evidence is captured in docs/09_MVP_SESSION.md
+    (ADR + Decision Minute).
+
+  contract:
+    purpose: >
+      Deploy the relay and prove end‑to‑end functionality with a real, attributed
+      multi‑AI session (Chairman + Claude via MCP + ChatGPT via Custom GPT).
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_08_BLUEPRINT.yaml"
+      - "./phase_08_ARCHITECTURE.yaml"
+      - "./phase_08_IMPLEMENTATION.yaml"
+    outputs:
+      - "deploy/railway.json"
+      - "deploy/fly/fly.toml"
+      - "deploy/render/render.yaml"
+      - "docs/09_DEPLOYMENT.md"
+      - "docs/09_MVP_SESSION.md"
+      - "docs/templates/mcp_servers.example.json"
+      - "docs/templates/custom_gpt_setup.md"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import os, re, sys, pathlib, json
+        required = [
+          "deploy/railway.json",
+          "deploy/fly/fly.toml",
+          "deploy/render/render.yaml",
+          "docs/09_DEPLOYMENT.md",
+          "docs/09_MVP_SESSION.md",
+          "docs/templates/mcp_servers.example.json",
+          "docs/templates/custom_gpt_setup.md",
+        ]
+        missing = [p for p in required if not pathlib.Path(p).exists()]
+        if missing:
+            print("Missing:", missing); sys.exit(1)
+        mcp = pathlib.Path("docs/templates/mcp_servers.example.json").read_text("utf-8")
+        assert "api_key" in mcp and "base_url" in mcp, "MCP template must include api_key and base_url placeholders"
+        url = os.environ.get("DEPLOY_URL")
+        if url:
+            import urllib.request
+            with urllib.request.urlopen(url, timeout=5) as r:
+                assert r.status == 200, f"Health not OK: {r.status}"
+        print("Phase 9 acceptance preflight passed.")
+        PY
+      expected: "All templates/docs present; optional live health check passes if DEPLOY_URL provided."
+    rollback: "git checkout -- deploy/ docs/09_DEPLOYMENT.md docs/09_MVP_SESSION.md docs/templates/"
+
+  deliverables:
+    - "Deployed relay on Railway/Fly.io/Render with public URL."
+    - "~/.config/claude/mcp_servers.json configured to target deployed relay (using template)."
+    - "Custom GPT configured (OpenAPI imported, auth set)."
+    - "First Discord thread created; Chairman posts via UI; Claude via MCP; ChatGPT via Custom GPT."
+    - "docs/09_MVP_SESSION.md records timestamp, participants, issues, and a Decision Minute."
+
+  success_criteria:
+    - "GET {DEPLOY_URL}/v1/system/health returns 200 (liveness/readiness)."
+    - "Claude posts to Discord via MCP; message visible in thread."
+    - "ChatGPT posts via Custom GPT; message visible in thread."
+    - "Chairman reads all messages in Discord; relay logs show all clients authenticated; no errors."
+
+  risks_and_mitigations:
+    - "Misconfigured CORS/base_url → Include target‑specific examples; verify with health/info endpoints."
+    - "Secret leakage in logs → redact API keys; rotate immediately if exposed."
+    - "Rate limiting at Discord → ensure Phase 6 queueing behavior; monitor logs."
+    - "Auth mismatch (API key headers) → align Custom GPT/MCP configs with relay’s header name."
+    - "Platform‑specific quirks → document troubleshooting in docs/09_DEPLOYMENT.md."
+
+  rollback_procedure:
+    - "Revert deploy configs; scale to 0 or remove service on provider."
+    - "Rotate tokens (Discord bot, Consilium API key); invalidate old keys."
+    - "Restore previous stable environment."
+
+  cross_doc_links:
+    architecture: "./phase_09_ARCHITECTURE.yaml"
+    implementation: "./phase_09_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0009-deployment-and-mvp-validation.md"

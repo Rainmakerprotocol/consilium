@@ -1,0 +1,126 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_07_blueprint"
+doc_title: "Phase 7 — Testing Suite — Blueprint"
+phase_id: "phase_07"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-06T23:18:07Z"
+last_updated_utc: "2025-10-06T23:18:07Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_BLUEPRINT.yaml"
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 7 exists and WHAT must be delivered to validate
+     the system end-to-end with deterministic, high-signal tests.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phases 5–6 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 7 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable.
+  6. Scope: Tests exercise real API routes with mocked Discord; no live
+     Discord network calls in Phase 7.
+
+sections:
+
+  summary: >
+    Phase 7 will establish a comprehensive test suite covering unit, integration,
+    and end-to-end paths for the Strategy APIs and Discord integration layer.
+    Tests must run deterministically and offline (Discord calls mocked). Coverage
+    target is ≥80% for src/api and src/discord. Outcomes enable Phase 8
+    containerization and Phase 9 deployment with confidence.
+
+  contract:
+    purpose: >
+      Validate the relay’s behavior across layers (models, routes, message
+      handling, client adapters) using deterministic tests and coverage,
+      ensuring the implementation from Phases 5–6 conforms to spec and is
+      regression-safe.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_05_BLUEPRINT.yaml"
+      - "./phase_05_ARCHITECTURE.yaml"
+      - "./phase_05_IMPLEMENTATION.yaml"
+      - "./phase_06_BLUEPRINT.yaml"
+      - "./phase_06_ARCHITECTURE.yaml"
+      - "./phase_06_IMPLEMENTATION.yaml"
+    outputs:
+      - "tests/conftest.py"
+      - "tests/test_models.py"
+      - "tests/test_message_handler.py"
+      - "tests/test_routes.py"
+      - "tests/test_integration.py"
+      - "pytest.ini"
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import subprocess, sys
+        cmd = [
+          "pytest", "-q",
+          "--cov=src/api", "--cov=src/discord",
+          "--cov-report=term-missing", "--cov-fail-under=80"
+        ]
+        sys.exit(subprocess.call(cmd))
+        PY
+      expected: "All tests pass; coverage for src/api and src/discord ≥ 80%."
+    rollback: "git checkout -- tests/ pytest.ini"
+
+  deliverables:
+    - "Unit tests: split_message boundaries, code-fence preservation, attribution embed creation."
+    - "Integration tests: start-thread/post/fetch happy paths and error cases (400/401/404/429)."
+    - "End-to-end flow via TestClient across Strategy endpoints with mocked Discord client."
+    - "pytest.ini enabling asyncio mode, test discovery, and coverage options."
+    - "Fixtures: mock Discord client, test FastAPI app, example payloads, time helpers."
+
+  success_criteria:
+    - "pytest exits 0; coverage for src/api and src/discord ≥ 80%."
+    - "No tests rely on live Discord; all external calls are mocked."
+    - "Deterministic: repeated runs produce identical results."
+    - "Readable, precise test names and failure messages."
+
+  risks_and_mitigations:
+    - "Flaky async tests → use pytest-asyncio; avoid sleeps; assert by effect."
+    - "Schema drift → validate request/response against Pydantic models from Phase 1."
+    - "Slow suite → limit fixtures’ scope; avoid network; reuse clients."
+    - "Mock/real mismatch → align mocks with OpenAPI shapes and Phase 6 signatures."
+
+  rollback_procedure:
+    - "Revert tests and pytest.ini; restore previous green state."
+    - "If needed, pin problematic dependencies and rerun minimal suite."
+
+  cross_doc_links:
+    architecture: "./phase_07_ARCHITECTURE.yaml"
+    implementation: "./phase_07_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0007-testing-architecture-and-coverage.md"

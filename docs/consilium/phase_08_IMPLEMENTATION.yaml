@@ -1,0 +1,912 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_08_implementation"
+doc_title: "Phase 8 — Containerization — Implementation"
+phase_id: "phase_08"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-07T23:00:00Z"
+last_updated_utc: "2025-10-07T23:00:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_08_BLUEPRINT.yaml"
+    - "./phase_08_ARCHITECTURE.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+  produces:
+    - "Dockerfile"
+    - "docker-compose.yml"
+    - ".dockerignore"
+    - "docs/08_DOCKER.md"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Provide concrete, executable steps to containerize the Consilium Relay.
+  2. Voice: Use imperative steps ("Create file X", "Configure Y").
+  3. Tense policy: After CI Gate passes, convert to past tense and set status COMPLETE.
+  4. Outputs: Must match exactly the file paths in sections.outputs.
+  5. Evidence: Provide validation commands with expected results.
+  6. Security: Run as non-root user; never bake secrets into image.
+  7. Execution: Follow steps sequentially; validate after each file.
+  8. Size optimization: Use multi-stage build and .dockerignore.
+
+# ===========================================================================
+# CONTRACT (copied verbatim from Blueprint/Architecture)
+# ===========================================================================
+
+contract:
+  purpose: >
+    Package the relay as a reproducible Docker image and a compose service for
+    consistent local execution and pre-deployment verification.
+  inputs:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_04_BLUEPRINT.yaml"
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_BLUEPRINT.yaml"
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+    - "./phase_07_BLUEPRINT.yaml"
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+  outputs:
+    - "Dockerfile"
+    - "docker-compose.yml"
+    - ".dockerignore"
+    - "docs/08_DOCKER.md"
+  acceptance:
+    ci_gate: |
+      docker build -t consilium-relay:latest .
+      docker compose up -d
+      python - <<'PY'
+      import time, urllib.request, sys
+      for _ in range(30):
+          try:
+              with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                  if r.status == 200:
+                      print("Health OK"); sys.exit(0)
+          except Exception:
+              time.sleep(1)
+      print("Health check failed"); sys.exit(1)
+      PY
+    expected: "Image builds; compose starts; health endpoint returns 200."
+  rollback: "git checkout -- Dockerfile docker-compose.yml .dockerignore docs/08_DOCKER.md"
+
+# ===========================================================================
+# STEP-BY-STEP IMPLEMENTATION
+# ===========================================================================
+
+implementation_steps:
+
+  # -------------------------------------------------------------------------
+  # STEP 1: Create .dockerignore
+  # -------------------------------------------------------------------------
+  
+  step_01_dockerignore:
+    order: 1
+    file: ".dockerignore"
+    purpose: "Exclude unnecessary files from Docker build context to reduce image size"
+    
+    content: |
+      # ===========================================================================
+      # Consilium Relay - Docker Ignore Patterns
+      # ===========================================================================
+      # Excludes files from Docker build context to minimize image size and
+      # prevent sensitive data from being copied into the image.
+      
+      # -------------------------------------------------------------------------
+      # Environment & Secrets (CRITICAL - never include in image)
+      # -------------------------------------------------------------------------
+      .env
+      .env.*
+      *.env
+      .env.local
+      .env.production
+      .env.development
+      
+      # -------------------------------------------------------------------------
+      # Development & Testing
+      # -------------------------------------------------------------------------
+      tests/
+      test_*.py
+      *_test.py
+      .pytest_cache/
+      htmlcov/
+      .coverage
+      .coverage.*
+      coverage.xml
+      *.cover
+      
+      # -------------------------------------------------------------------------
+      # Documentation (not needed at runtime)
+      # -------------------------------------------------------------------------
+      docs/
+      *.md
+      !README.md
+      LICENSE
+      
+      # -------------------------------------------------------------------------
+      # Version Control
+      # -------------------------------------------------------------------------
+      .git/
+      .gitignore
+      .gitattributes
+      
+      # -------------------------------------------------------------------------
+      # Python Cache & Build Artifacts
+      # -------------------------------------------------------------------------
+      __pycache__/
+      *.py[cod]
+      *$py.class
+      *.so
+      .Python
+      build/
+      develop-eggs/
+      dist/
+      downloads/
+      eggs/
+      .eggs/
+      lib/
+      lib64/
+      parts/
+      sdist/
+      var/
+      wheels/
+      *.egg-info/
+      .installed.cfg
+      *.egg
+      
+      # -------------------------------------------------------------------------
+      # Virtual Environments
+      # -------------------------------------------------------------------------
+      venv/
+      env/
+      ENV/
+      .venv/
+      
+      # -------------------------------------------------------------------------
+      # IDE & Editor Files
+      # -------------------------------------------------------------------------
+      .vscode/
+      .idea/
+      *.swp
+      *.swo
+      *~
+      .DS_Store
+      
+      # -------------------------------------------------------------------------
+      # Logs & AI Logs
+      # -------------------------------------------------------------------------
+      .ai_logs/
+      *.log
+      logs/
+      
+      # -------------------------------------------------------------------------
+      # CI/CD
+      # -------------------------------------------------------------------------
+      .github/
+      .gitlab-ci.yml
+      Jenkinsfile
+      
+      # -------------------------------------------------------------------------
+      # Docker (don't include Docker files recursively)
+      # -------------------------------------------------------------------------
+      Dockerfile*
+      docker-compose*.yml
+      .dockerignore
+      
+      # -------------------------------------------------------------------------
+      # Miscellaneous
+      # -------------------------------------------------------------------------
+      tmp/
+      temp/
+      *.tmp
+      .cache/
+    
+    validation: "grep -q '.env' .dockerignore && grep -q 'tests/' .dockerignore && echo '✓ .dockerignore created'"
+    
+    notes:
+      - "Critical: .env files must NEVER be included in Docker images"
+      - "Excluding tests/ and docs/ reduces image size significantly"
+      - "Python cache files (__pycache__) are regenerated at runtime"
+      - "Virtual environments not needed (dependencies installed in container)"
+
+  # -------------------------------------------------------------------------
+  # STEP 2: Create Dockerfile (Multi-Stage Build)
+  # -------------------------------------------------------------------------
+  
+  step_02_dockerfile:
+    order: 2
+    file: "Dockerfile"
+    purpose: "Define multi-stage Docker build for small, secure, production-ready image"
+    
+    implementation_guide: |
+      Create Dockerfile with multi-stage build:
+      
+      **Stage 1: Builder**
+      - Base: python:3.11-slim
+      - Install build dependencies
+      - Install Python packages from requirements.txt
+      - Copy source code
+      
+      **Stage 2: Runtime**
+      - Base: python:3.11-slim (fresh, smaller)
+      - Create non-root user (appuser)
+      - Copy only necessary files from builder
+      - Set working directory
+      - Expose port 8000
+      - Run as non-root user
+      - Start uvicorn server
+      
+      **Security Requirements:**
+      - Run as non-root user (UID 1000)
+      - No secrets baked into image
+      - Minimal attack surface (slim base image)
+      
+      **Size Optimization:**
+      - Multi-stage build (discard build artifacts)
+      - --no-cache-dir for pip (no cache files)
+      - Only production dependencies
+      - .dockerignore excludes unnecessary files
+    
+    content: |
+      # ===========================================================================
+      # Consilium Relay - Dockerfile (Multi-Stage Build)
+      # ===========================================================================
+      # Stage 1: Builder - Install dependencies and prepare application
+      # Stage 2: Runtime - Minimal production image with non-root user
+      # ===========================================================================
+      
+      # ---------------------------------------------------------------------------
+      # STAGE 1: BUILDER
+      # ---------------------------------------------------------------------------
+      FROM python:3.11-slim AS builder
+      
+      # Set working directory
+      WORKDIR /app
+      
+      # Install system dependencies needed for Python packages
+      # (discord.py may need build tools for some platforms)
+      RUN apt-get update && \
+          apt-get install -y --no-install-recommends \
+          gcc \
+          && rm -rf /var/lib/apt/lists/*
+      
+      # Copy requirements and install Python dependencies
+      COPY requirements.txt ./
+      RUN pip install --no-cache-dir --upgrade pip && \
+          pip install --no-cache-dir -r requirements.txt
+      
+      # Copy source code
+      COPY src/ ./src/
+      
+      # ---------------------------------------------------------------------------
+      # STAGE 2: RUNTIME
+      # ---------------------------------------------------------------------------
+      FROM python:3.11-slim AS runtime
+      
+      # Install runtime dependencies (wget for health checks)
+      RUN apt-get update && \
+          apt-get install -y --no-install-recommends \
+          wget \
+          && rm -rf /var/lib/apt/lists/*
+      
+      # Create non-root user
+      RUN useradd -m -u 1000 appuser
+      
+      # Set working directory
+      WORKDIR /app
+      
+      # Copy Python packages from builder
+      COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+      COPY --from=builder /usr/local/bin /usr/local/bin
+      
+      # Copy application source
+      COPY --from=builder /app/src ./src
+      
+      # Set ownership to appuser
+      RUN chown -R appuser:appuser /app
+      
+      # Expose port
+      EXPOSE 8000
+      
+      # Switch to non-root user
+      USER appuser
+      
+      # Health check
+      HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+          CMD wget -qO- http://localhost:8000/v1/system/health || exit 1
+      
+      # Start application
+      CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    
+    validation: |
+      docker build -t consilium-relay:test . && echo '✓ Dockerfile builds successfully'
+    
+    expected_image_size: "<500MB (typically 200-300MB with multi-stage build)"
+    
+    notes:
+      - "Multi-stage build discards build tools, reducing final image size"
+      - "gcc in builder stage needed for some Python package compilation"
+      - "wget in runtime for Docker healthcheck command"
+      - "USER appuser ensures container doesn't run as root"
+      - "HEALTHCHECK provides automatic container health monitoring"
+      - "Port 8000 exposed; configurable via docker-compose"
+
+  # -------------------------------------------------------------------------
+  # STEP 3: Create docker-compose.yml
+  # -------------------------------------------------------------------------
+  
+  step_03_docker_compose:
+    order: 3
+    file: "docker-compose.yml"
+    purpose: "Define Docker Compose service for easy local development and testing"
+    
+    implementation_guide: |
+      Create docker-compose.yml with:
+      
+      **Service: relay**
+      - Build from local Dockerfile
+      - Load environment variables from .env file
+      - Map port 8000:8000
+      - Restart policy: unless-stopped
+      - Container name: consilium-relay
+      - Health check using /v1/system/health endpoint
+      
+      **Configuration:**
+      - Environment variables from .env (not committed to Git)
+      - Port mapping allows access at http://localhost:8000
+      - Health check monitors service availability
+      - Restart policy ensures resilience
+    
+    content: |
+      # ===========================================================================
+      # Consilium Relay - Docker Compose Configuration
+      # ===========================================================================
+      # Defines the relay service for local development and testing.
+      # Environment variables loaded from .env file (not committed to Git).
+      # ===========================================================================
+      
+      version: '3.8'
+      
+      services:
+        relay:
+          # Build configuration
+          build:
+            context: .
+            dockerfile: Dockerfile
+          
+          # Container name
+          container_name: consilium-relay
+          
+          # Image name and tag
+          image: consilium-relay:latest
+          
+          # Environment variables from .env file
+          env_file:
+            - .env
+          
+          # Port mapping (host:container)
+          ports:
+            - "8000:8000"
+          
+          # Restart policy
+          restart: unless-stopped
+          
+          # Health check
+          healthcheck:
+            test: ["CMD", "wget", "-qO-", "http://localhost:8000/v1/system/health"]
+            interval: 30s
+            timeout: 3s
+            retries: 3
+            start_period: 10s
+          
+          # Logging configuration
+          logging:
+            driver: "json-file"
+            options:
+              max-size: "10m"
+              max-file: "3"
+      
+      # Network configuration (optional, uses default bridge network)
+      networks:
+        default:
+          name: consilium-network
+    
+    validation: |
+      docker compose config && echo '✓ docker-compose.yml is valid'
+    
+    notes:
+      - "Requires .env file with Discord credentials and API key"
+      - "Port 8000 can be changed in ports mapping if needed"
+      - "Health check waits 10s before starting (start_period)"
+      - "Logs limited to 10MB per file, max 3 files (prevents disk fill)"
+      - "Container auto-restarts unless manually stopped"
+
+  # -------------------------------------------------------------------------
+  # STEP 4: Create Docker Documentation
+  # -------------------------------------------------------------------------
+  
+  step_04_docker_docs:
+    order: 4
+    file: "docs/08_DOCKER.md"
+    purpose: "Provide clear instructions for building, running, and managing the containerized relay"
+    
+    content: |
+      # Consilium Relay - Docker Guide
+      
+      ## Overview
+      
+      This guide covers building, running, and managing the Consilium Relay as a Docker container.
+      
+      ---
+      
+      ## Prerequisites
+      
+      - **Docker**: Version 20.10 or later
+      - **Docker Compose**: Version 2.0 or later
+      - **.env file**: Configured with Discord credentials and API key (see Phase 3 documentation)
+      
+      Verify installations:
+      ```bash
+      docker --version
+      docker compose version
+      ```
+      
+      ---
+      
+      ## Quick Start
+      
+      ### 1. Build the Image
+      
+      ```bash
+      docker build -t consilium-relay:latest .
+      ```
+      
+      **Expected Output:**
+      - Multi-stage build completes successfully
+      - Final image size: ~200-300MB
+      - No errors or warnings
+      
+      ### 2. Start the Service
+      
+      ```bash
+      docker compose up -d
+      ```
+      
+      **What This Does:**
+      - Starts the relay container in detached mode
+      - Loads environment variables from `.env`
+      - Maps port 8000 to host
+      - Configures auto-restart policy
+      
+      ### 3. Verify Health
+      
+      ```bash
+      curl http://localhost:8000/v1/system/health
+      ```
+      
+      **Expected Response:**
+      ```json
+      {
+        "status": "healthy",
+        "timestamp": "2025-10-07T12:00:00Z"
+      }
+      ```
+      
+      ---
+      
+      ## Common Commands
+      
+      ### View Logs
+      
+      **Follow logs in real-time:**
+      ```bash
+      docker compose logs -f relay
+      ```
+      
+      **View last 100 lines:**
+      ```bash
+      docker compose logs --tail=100 relay
+      ```
+      
+      ### Stop the Service
+      
+      ```bash
+      docker compose down
+      ```
+      
+      **Stop and remove volumes (caution):**
+      ```bash
+      docker compose down -v
+      ```
+      
+      ### Restart the Service
+      
+      ```bash
+      docker compose restart relay
+      ```
+      
+      ### Check Service Status
+      
+      ```bash
+      docker compose ps
+      ```
+      
+      ### Execute Commands in Container
+      
+      ```bash
+      docker compose exec relay /bin/bash
+      ```
+      
+      ---
+      
+      ## Development Workflow
+      
+      ### Rebuild After Code Changes
+      
+      ```bash
+      docker compose down
+      docker compose build --no-cache
+      docker compose up -d
+      ```
+      
+      ### Run Tests in Container
+      
+      ```bash
+      docker compose exec relay pytest -v
+      ```
+      
+      ### Check Coverage in Container
+      
+      ```bash
+      docker compose exec relay pytest --cov=src/api --cov=src/discord --cov-report=term-missing
+      ```
+      
+      ---
+      
+      ## Troubleshooting
+      
+      ### Container Won't Start
+      
+      **Check logs:**
+      ```bash
+      docker compose logs relay
+      ```
+      
+      **Common issues:**
+      - Missing `.env` file → Create from `.env.example`
+      - Invalid credentials → Verify Discord bot token and API key
+      - Port 8000 in use → Change port mapping in `docker-compose.yml`
+      
+      ### Health Check Failing
+      
+      **Check if app is running:**
+      ```bash
+      docker compose exec relay ps aux
+      ```
+      
+      **Test health endpoint manually:**
+      ```bash
+      docker compose exec relay wget -qO- http://localhost:8000/v1/system/health
+      ```
+      
+      ### Build Errors
+      
+      **Clear Docker cache and rebuild:**
+      ```bash
+      docker system prune -a
+      docker build --no-cache -t consilium-relay:latest .
+      ```
+      
+      ### Permission Errors
+      
+      The container runs as non-root user `appuser` (UID 1000). If you encounter permission issues:
+      ```bash
+      # Check file ownership
+      docker compose exec relay ls -la /app
+      
+      # Should show: appuser appuser
+      ```
+      
+      ---
+      
+      ## Production Deployment Notes
+      
+      ### Environment Variables
+      
+      **Never commit `.env` to Git.** For production:
+      - Use secrets management (e.g., AWS Secrets Manager, HashiCorp Vault)
+      - Set environment variables via cloud platform (Railway, Fly.io, Render)
+      - Rotate credentials quarterly
+      
+      ### Image Registry
+      
+      **Tag and push to registry:**
+      ```bash
+      docker tag consilium-relay:latest your-registry/consilium-relay:v1.0.0
+      docker push your-registry/consilium-relay:v1.0.0
+      ```
+      
+      ### Resource Limits
+      
+      Add to `docker-compose.yml` for production:
+      ```yaml
+      services:
+        relay:
+          deploy:
+            resources:
+              limits:
+                cpus: '0.5'
+                memory: 512M
+              reservations:
+                cpus: '0.25'
+                memory: 256M
+      ```
+      
+      ### Monitoring
+      
+      - Monitor `/v1/system/health` endpoint (200 = healthy)
+      - Check logs regularly: `docker compose logs -f relay`
+      - Set up alerting for container restarts or health check failures
+      
+      ---
+      
+      ## Security Best Practices
+      
+      1. **Never run as root** - Container uses non-root user `appuser`
+      2. **No secrets in image** - All credentials from `.env` or secrets manager
+      3. **Minimal base image** - Uses `python:3.11-slim` (smaller attack surface)
+      4. **Regular updates** - Rebuild with latest base image monthly
+      5. **Network isolation** - Use Docker networks to isolate services
+      
+      ---
+      
+      ## Image Size Optimization
+      
+      **Current size:** ~200-300MB (multi-stage build)
+      
+      **Further optimization (optional):**
+      - Use `python:3.11-alpine` (caveat: some packages harder to install)
+      - Remove unnecessary dependencies from `requirements.txt`
+      - Use `--no-install-recommends` for apt packages
+      
+      **Check image size:**
+      ```bash
+      docker images consilium-relay:latest
+      ```
+      
+      ---
+      
+      ## Next Steps
+      
+      After successful containerization:
+      - Proceed to **Phase 9: Deployment**
+      - Deploy to cloud platform (Railway, Fly.io, or Render)
+      - Configure Claude MCP and ChatGPT Custom GPT
+      - Run first multi-AI session
+      
+      ---
+      
+      ## Reference
+      
+      - [Docker Documentation](https://docs.docker.com/)
+      - [Docker Compose Documentation](https://docs.docker.com/compose/)
+      - [Dockerfile Best Practices](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
+      - Phase 3 Documentation (Discord setup)
+      - Phase 9 Documentation (Deployment)
+    
+    validation: "test -f docs/08_DOCKER.md && grep -q 'Quick Start' docs/08_DOCKER.md && echo '✓ Docker documentation created'"
+    
+    notes:
+      - "Documentation covers both development and production scenarios"
+      - "Troubleshooting section addresses common issues"
+      - "Security best practices emphasized throughout"
+      - "Next steps guide users to Phase 9 deployment"
+
+# ===========================================================================
+# COMPREHENSIVE VALIDATION SUITE
+# ===========================================================================
+
+comprehensive_validation:
+  description: "Full validation of Phase 8 containerization deliverables"
+  
+  validation_01_dockerignore:
+    name: "Validate .dockerignore"
+    command: "grep -q '.env' .dockerignore && grep -q 'tests/' .dockerignore && echo '✓ .dockerignore configured'"
+    expected: ".dockerignore excludes secrets and unnecessary files"
+  
+  validation_02_dockerfile_syntax:
+    name: "Validate Dockerfile Syntax"
+    command: "docker build --no-cache -t consilium-relay:test ."
+    expected: "Dockerfile builds without errors"
+  
+  validation_03_image_size:
+    name: "Check Image Size"
+    command: |
+      SIZE=$(docker images consilium-relay:test --format "{{.Size}}")
+      echo "Image size: $SIZE"
+    expected: "Image size <500MB (typically 200-300MB)"
+  
+  validation_04_compose_syntax:
+    name: "Validate docker-compose.yml"
+    command: "docker compose config"
+    expected: "docker-compose.yml is valid YAML"
+  
+  validation_05_start_service:
+    name: "Start Service via Compose"
+    command: "docker compose up -d"
+    expected: "Service starts successfully"
+  
+  validation_06_health_check:
+    name: "Health Check"
+    command: |
+      python - <<'PY'
+      import time, urllib.request, sys
+      for _ in range(30):
+          try:
+              with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                  if r.status == 200:
+                      print("✓ Health check passed"); sys.exit(0)
+          except Exception:
+              time.sleep(1)
+      print("✗ Health check failed"); sys.exit(1)
+      PY
+    expected: "Health endpoint returns 200"
+  
+  validation_07_api_info:
+    name: "Test API Info Endpoint"
+    command: "curl -s http://localhost:8000/v1/system/info | grep -q 'version'"
+    expected: "Info endpoint returns version information"
+  
+  validation_08_logs_accessible:
+    name: "Verify Logs Accessible"
+    command: "docker compose logs relay | grep -q 'Application startup complete'"
+    expected: "Logs show successful startup"
+  
+  validation_09_non_root_user:
+    name: "Verify Non-Root User"
+    command: "docker compose exec relay whoami | grep -q 'appuser'"
+    expected: "Container runs as appuser (non-root)"
+  
+  validation_10_cleanup:
+    name: "Cleanup Test Resources"
+    command: "docker compose down && docker rmi consilium-relay:test"
+    expected: "Resources cleaned up successfully"
+
+# ===========================================================================
+# CI GATE (Final Acceptance)
+# ===========================================================================
+
+ci_gate:
+  commands: |
+    # Build image
+    docker build -t consilium-relay:latest .
+    
+    # Start service
+    docker compose up -d
+    
+    # Wait for health check
+    python - <<'PY'
+    import time, urllib.request, sys
+    for _ in range(30):
+        try:
+            with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                if r.status == 200:
+                    print("Health OK"); sys.exit(0)
+        except Exception:
+            time.sleep(1)
+    print("Health check failed"); sys.exit(1)
+    PY
+    
+    # Cleanup
+    docker compose down
+  
+  expected: "Image builds; compose starts; health endpoint returns 200"
+  exit_code: 0
+  on_failure: "Review Docker logs, check .env configuration, verify Dockerfile syntax"
+
+# ===========================================================================
+# COMPLETION STATUS
+# ===========================================================================
+
+completion_status:
+  status: "DRAFT"
+  
+  completion_criteria:
+    - "[ ] .dockerignore created with proper exclusions"
+    - "[ ] Dockerfile created with multi-stage build"
+    - "[ ] docker-compose.yml created with health check"
+    - "[ ] docs/08_DOCKER.md created with comprehensive instructions"
+    - "[ ] Image builds successfully (<500MB)"
+    - "[ ] Container runs as non-root user (appuser)"
+    - "[ ] Health check passes (200 response)"
+    - "[ ] Service starts via docker compose"
+    - "[ ] Logs accessible via docker compose logs"
+    - "[ ] Documentation covers troubleshooting"
+    - "[ ] CI gate passes"
+  
+  when_complete:
+    - "Convert all tense to past tense"
+    - "Update status to COMPLETE"
+    - "Update PHASE_NOTES.md with image size and build time"
+    - "Tag Docker image with version (e.g., v1.0.0)"
+    - "Proceed to Phase 9 (Deployment)"
+
+# ===========================================================================
+# ROLLBACK PROCEDURE
+# ===========================================================================
+
+rollback_procedure:
+  description: "Rollback if validation fails"
+  steps:
+    - "docker compose down (stop running containers)"
+    - "docker rmi consilium-relay:latest (remove image)"
+    - "git checkout -- Dockerfile docker-compose.yml .dockerignore docs/08_DOCKER.md"
+    - "Verify local venv run still succeeds"
+    - "Review build errors and fix issues"
+    - "Rebuild and revalidate"
+
+# ===========================================================================
+# NOTES & REFERENCES
+# ===========================================================================
+
+notes:
+  - "Multi-stage build reduces final image size by 50-70%"
+  - "Running as non-root user (appuser) improves security"
+  - ".dockerignore is critical - prevents .env from being copied into image"
+  - "Health check uses wget (installed in runtime stage)"
+  - "Port 8000 is default but configurable in docker-compose.yml"
+  - "Logs limited to 30MB total (3 files × 10MB) to prevent disk fill"
+  - "Image should be rebuilt monthly to get latest security patches"
+  - "For production, use secrets manager instead of .env file"
+
+references:
+  - "Docker best practices: https://docs.docker.com/develop/develop-images/dockerfile_best-practices/"
+  - "Multi-stage builds: https://docs.docker.com/build/building/multi-stage/"
+  - "Docker security: https://docs.docker.com/engine/security/"
+  - "Docker Compose: https://docs.docker.com/compose/"
+  - "Health checks: https://docs.docker.com/engine/reference/builder/#healthcheck"
+
+# ===========================================================================
+# TECHNICAL DECISIONS
+# ===========================================================================
+
+technical_decisions:
+  base_image: "python:3.11-slim (balance between size and compatibility)"
+  build_strategy: "Multi-stage (builder + runtime to minimize final size)"
+  user: "Non-root appuser UID 1000 (security best practice)"
+  health_check: "wget to /v1/system/health (simple, reliable)"
+  logging: "JSON driver with rotation (10MB max, 3 files)"
+  restart_policy: "unless-stopped (resilient but allows manual stop)"
+  port: "8000 (standard for FastAPI, configurable)"
+  network: "Custom bridge network (isolates from other containers)"
+
+# ===========================================================================
+# END OF IMPLEMENTATION
+# ===========================================================================

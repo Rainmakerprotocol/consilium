@@ -1,0 +1,127 @@
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: phase_06_architecture
+doc_title: "Phase 6 \u2014 Discord Client Integration \u2014 Architecture"
+phase_id: phase_06
+api_version: v1.1
+status: DRAFT
+created_utc: '2025-10-05T16:08:49Z'
+last_updated_utc: '2025-10-05T16:08:49Z'
+canonical_spec_path: ../01_spec/02_OPENAPI_SCHEMA.yaml
+authority_order:
+- 00_AI_AGENT_RULES.md
+- BLUEPRINT
+- ARCHITECTURE
+- IMPLEMENTATION
+audience:
+- copilot
+- ai_agents
+- human_developers
+update_protocol: tense_management
+cross_doc_relationship:
+  consumes:
+  - ./phase_06_BLUEPRINT.yaml
+  - ../00_parent/00_COPILOT_README.md
+  - ../01_spec/02_OPENAPI_SCHEMA.yaml
+  - ./phase_05_BLUEPRINT.yaml
+  - ./phase_05_ARCHITECTURE.yaml
+  - ./phase_05_IMPLEMENTATION.yaml
+  - ./phase_03_BLUEPRINT.yaml
+  - ./phase_03_ARCHITECTURE.yaml
+  - ./phase_03_IMPLEMENTATION.yaml
+  produces:
+  - ./phase_06_IMPLEMENTATION.yaml
+  updates:
+  - ../TECHNICAL_DECISIONS.md
+  - ../PHASE_NOTES.md
+copilot_instructions: '1. Purpose: Define HOW to implement Phase 6 by replacing mocks
+  with a real discord.py client.
+
+  2. Conformance: Public interfaces MUST match the canonical OpenAPI v1.1 spec exactly.
+
+  3. Tense: Use future tense while DRAFT; convert to past tense when COMPLETE.
+
+  4. Carry forward: Copy the Contract block verbatim from the Blueprint.
+
+  5. Validation: CI Gate must be scriptable and deterministic; include offline preflight.'
+sections:
+  module_map: "src/\n  api/\n    routes.py             # Strategy endpoints calling\
+    \ real client/handler\n  discord/\n    client.py             # discord.py client\
+    \ (connect/create_thread/send/fetch)\n    message_handler.py    # split_message/enqueue_message/send_with_attribution\n\
+    \  core/\n    config.py             # Phase 4\n    logging.py            # Phase\
+    \ 4\n  main.py                 # Phase 4 (routes registration)\n\ntests/     \
+    \               # Phase 7 (expanded)\n  conftest.py\n  test_message_handler.py\n\
+    \  test_routes.py\n"
+  interfaces:
+    rest_endpoints:
+    - path: /v1/strategy/start-thread
+      handler: api.routes.start_thread()
+    - path: /v1/strategy/post
+      handler: api.routes.post_message()
+    - path: /v1/strategy/fetch
+      handler: api.routes.fetch_messages()
+    - path: /v1/system/health
+      handler: 'api.routes.health  # Phase 4'
+    - path: /v1/system/info
+      handler: 'api.routes.info    # Phase 4'
+    internal_apis:
+    - 'discord.client.DiscordClient.__init__(token: str, guild_id: str, channel_id:
+      str) -> None'
+    - 'discord.client.DiscordClient.create_thread(title: str, seed_message: str |
+      None = None) -> dict'
+    - 'discord.client.DiscordClient.send_message(thread_id: str, content: str, author:
+      ''Author'', reply_to: str | None = None) -> list[str]'
+    - 'discord.client.DiscordClient.fetch_messages(thread_id: str, after: ''datetime
+      | None'' = None, limit: int = 50) -> list[''Message'']'
+    - 'discord.message_handler.split_message(content: str, max_length: int = 2000)
+      -> list[str]'
+    - 'discord.message_handler.enqueue_message(thread_id: str, chunks: list[str],
+      attribution: dict) -> None'
+    - 'discord.message_handler.send_with_attribution(thread_id: str, content: str,
+      author: ''Author'', reply_to: str | None = None) -> list[str]'
+  non_functional_requirements:
+  - Respect Discord rate limits (token bucket + backoff); return 202 + Retry-After
+    when queueing.
+  - Preserve code fences across message splits; never break multibyte sequences.
+  - Embed attribution footer with agent/model/run_id; keep message body clean.
+  - Fail fast on missing or invalid .env vars; never log secrets.
+  - 80-char lines; explicit type hints; Google-style docstrings.
+  - No new endpoints added; only replace Phase 5 mocks.
+  contract:
+    purpose: Replace Phase 5 mocks with a production-ready discord.py client and a
+      message handler while preserving all public API contracts. Ensure rate limits
+      are respected, messages >2000 chars are split safely, and attribution metadata
+      is attached as embeds.
+    inputs:
+    - ../00_parent/00_COPILOT_README.md
+    - ../consilium-9_phase_plan.yml
+    - ../01_spec/02_OPENAPI_SCHEMA.yaml
+    - ./phase_05_BLUEPRINT.yaml
+    - ./phase_05_ARCHITECTURE.yaml
+    - ./phase_05_IMPLEMENTATION.yaml
+    - ./phase_03_BLUEPRINT.yaml
+    - ./phase_03_ARCHITECTURE.yaml
+    - ./phase_03_IMPLEMENTATION.yaml
+    outputs:
+    - src/discord/client.py
+    - src/discord/message_handler.py
+    - src/api/routes.py
+    acceptance:
+      ci_gate: "python - <<'PY'\nimport importlib, os\nclient = importlib.import_module('src.discord.client')\n\
+        mh = importlib.import_module('src.discord.message_handler')\nfor (mod, names)\
+        \ in [(client, ['DiscordClient']), (mh, ['split_message','enqueue_message','send_with_attribution'])]:\n\
+        \  for n in names:\n    assert hasattr(mod, n), f'Missing {n} in {mod.__name__}'\n\
+        print('Phase 6 preflight passed.')\nPY"
+      expected: Offline preflight passes; required symbols present.
+    rollback: git checkout -- src/discord/client.py src/discord/message_handler.py
+      src/api/routes.py
+ci_gate:
+  commands: "ruff .\nmypy .\npython - <<'PY'\nimport importlib\nclient = importlib.import_module('src.discord.client')\n\
+    mh = importlib.import_module('src.discord.message_handler')\nassert hasattr(client,\
+    \ 'DiscordClient'), 'Missing DiscordClient'\nfor n in ('split_message','enqueue_message','send_with_attribution'):\n\
+    \  assert hasattr(mh, n), f'Missing {n} in message_handler'\nprint('Phase 6 architecture\
+    \ preflight passed.')\nPY\n"
+  expected: Linters pass; offline preflight finds required symbols.
+rollback_procedure:
+- Revert created/modified files listed in Contract.outputs.
+- If needed, reset to last passing commit.

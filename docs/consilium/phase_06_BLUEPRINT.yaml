@@ -1,0 +1,132 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_06_blueprint"
+doc_title: "Phase 6 — Discord Client Integration — Blueprint"
+phase_id: "phase_06"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-05T15:51:34Z"
+last_updated_utc: "2025-10-05T15:51:34Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_03_BLUEPRINT.yaml"
+    - "./phase_03_ARCHITECTURE.yaml"
+    - "./phase_03_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 6 exists and WHAT must be delivered to replace
+     mocked Strategy endpoints with **real Discord integration** using discord.py.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phases 3 & 5 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 6 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable. Provide
+     both an offline preflight and an optional live test gated by an env flag.
+  6. Scope: Replace mocks only; do **not** add new endpoints.
+
+sections:
+
+  summary: >
+    Phase 6 will implement the real Discord integration and swap the Phase 5
+    mocks for live calls. It introduces an async Discord client with methods
+    to create threads, send messages (with attribution embeds, split at 2000
+    chars preserving code fences), and fetch messages. The API routes from
+    Phase 5 will be refactored to call this client and a rate-limit–aware
+    message handler that can queue sends and return 202/Retry-After when needed.
+
+  contract:
+    purpose: >
+      Replace Phase 5 mocks with a production-ready discord.py client and a
+      message handler while preserving all public API contracts. Ensure rate
+      limits are respected, messages >2000 chars are split safely, and
+      attribution metadata is attached as embeds.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_05_BLUEPRINT.yaml"
+      - "./phase_05_ARCHITECTURE.yaml"
+      - "./phase_05_IMPLEMENTATION.yaml"
+      - "./phase_03_BLUEPRINT.yaml"
+      - "./phase_03_ARCHITECTURE.yaml"
+      - "./phase_03_IMPLEMENTATION.yaml"
+    outputs:
+      - "src/discord/client.py"            # discord.py client with create_thread/send_message/fetch_messages
+      - "src/discord/message_handler.py"   # split_message, enqueue_message, send_with_attribution
+      - "src/api/routes.py"                # updated to call the real client/handler
+    acceptance:
+      ci_gate: |
+        python - <<'PY'
+        import importlib, os
+        # Offline preflight: signatures present
+        client = importlib.import_module("src.discord.client")
+        mh = importlib.import_module("src.discord.message_handler")
+        for (mod, names) in [(client, ["DiscordClient"]), (mh, ["split_message","enqueue_message","send_with_attribution"])]:
+          for n in names:
+            assert hasattr(mod, n), f"Missing {n} in {mod.__name__}"
+        # Optional live check gated by env
+        if os.environ.get("LIVE_DISCORD_TEST") == "1":
+          app = importlib.import_module("src.main").app
+          paths = {getattr(r, "path", None) for r in app.routes}
+          for p in ("/v1/strategy/start-thread","/v1/strategy/post","/v1/strategy/fetch"):
+            assert p in paths, f"Route not mounted: {p}"
+        print("Phase 6 preflight passed.")
+        PY
+      expected: "Offline preflight passes; optional live check requires LIVE_DISCORD_TEST=1."
+    rollback: "git checkout -- src/discord/client.py src/discord/message_handler.py src/api/routes.py"
+
+  deliverables:
+    - "src/discord/client.py — Async discord.py client; connect, create_thread, send_message, fetch_messages."
+    - "src/discord/message_handler.py — split_message (preserve code fences), enqueue_message (rate-limit aware), send_with_attribution (embed footer)."
+    - "src/api/routes.py — Strategy handlers updated to call the real client/handler; same request/response shapes."
+    - "Error handling: connection errors logged and surfaced as 503; 202 queue behavior with Retry-After; 429 avoided."
+
+  success_criteria:
+    - "POST /v1/strategy/post sends real messages to Discord; GET /v1/strategy/fetch returns them."
+    - "Messages >2000 chars are split; code fences remain intact across chunks."
+    - "Attribution appears in Discord via embed footer (agent/model/run_id)."
+    - "No 429s from Discord under normal load; queue returns 202 with Retry-After when applied."
+    - "Connection errors yield 503 at the API with structured error body."
+
+  risks_and_mitigations:
+    - "Gateway/rate limits → Implement token-bucket/backoff; queue sends and expose 202/Retry-After."
+    - "Markdown/code fence corruption → Dedicated splitter preserves ``` fences across boundaries."
+    - "Token leakage → Read from .env; never log secrets; rotate on suspicion."
+    - "Discord outages → Map to 503 and log context; retry with backoff."
+    - "Long messages → Enforce hard 2000-char chunks, avoid breaking multibyte sequences."
+
+  rollback_procedure:
+    - "Revert modified files; restore Phase 5 mocked handlers if necessary."
+    - "Disable live client in config; fall back to mock mode for smoke tests."
+
+  cross_doc_links:
+    architecture: "./phase_06_ARCHITECTURE.yaml"
+    implementation: "./phase_06_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0006-discord-client-and-rate-limiting.md"

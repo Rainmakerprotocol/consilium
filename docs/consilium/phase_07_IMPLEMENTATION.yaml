@@ -1,0 +1,1204 @@
+---
+doc_type: IMPLEMENTATION
+template_version: 1.1.0
+implementation_id: "phase_07_implementation"
+doc_title: "Phase 7 — Testing Suite — Implementation"
+phase_id: "phase_07"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-06T23:30:00Z"
+last_updated_utc: "2025-10-06T23:30:00Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_07_BLUEPRINT.yaml"
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+  produces:
+    - "tests/conftest.py"
+    - "tests/test_models.py"
+    - "tests/test_message_handler.py"
+    - "tests/test_routes.py"
+    - "tests/test_integration.py"
+    - "pytest.ini"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Provide concrete, executable steps to implement Phase 7 testing suite.
+  2. Voice: Use imperative steps ("Create file X", "Implement test Y").
+  3. Tense policy: After CI Gate passes, convert to past tense and set status COMPLETE.
+  4. Outputs: Must match exactly the file paths in sections.outputs.
+  5. Evidence: Provide validation commands with expected results.
+  6. Coverage: Target ≥80% for src/api and src/discord modules.
+  7. Execution: Follow steps sequentially; validate after each module.
+  8. No Live Discord: All Discord client interactions must be mocked.
+
+# ===========================================================================
+# CONTRACT (copied verbatim from Blueprint/Architecture)
+# ===========================================================================
+
+contract:
+  purpose: >
+    Validate the relay's behavior across layers (models, routes, message
+    handling, client adapters) using deterministic tests and coverage,
+    ensuring the implementation from Phases 5–6 conforms to spec and is
+    regression-safe.
+  inputs:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_BLUEPRINT.yaml"
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+  outputs:
+    - "tests/conftest.py"
+    - "tests/test_models.py"
+    - "tests/test_message_handler.py"
+    - "tests/test_routes.py"
+    - "tests/test_integration.py"
+    - "pytest.ini"
+  acceptance:
+    ci_gate: |
+      python - <<'PY'
+      import subprocess, sys
+      cmd = [
+        "pytest", "-q",
+        "--cov=src/api", "--cov=src/discord",
+        "--cov-report=term-missing", "--cov-fail-under=80"
+      ]
+      sys.exit(subprocess.call(cmd))
+      PY
+    expected: "All tests pass; coverage for src/api and src/discord ≥ 80%."
+  rollback: "git checkout -- tests/ pytest.ini"
+
+# ===========================================================================
+# STEP-BY-STEP IMPLEMENTATION
+# ===========================================================================
+
+implementation_steps:
+
+  # -------------------------------------------------------------------------
+  # STEP 1: Create pytest Configuration
+  # -------------------------------------------------------------------------
+  
+  step_01_pytest_ini:
+    order: 1
+    file: "pytest.ini"
+    purpose: "Configure pytest for async tests, coverage, and test discovery"
+    
+    content: |
+      [pytest]
+      # Pytest configuration for Consilium Relay testing
+      
+      # Test discovery
+      testpaths = tests
+      python_files = test_*.py
+      python_classes = Test*
+      python_functions = test_*
+      
+      # Asyncio support
+      asyncio_mode = auto
+      
+      # Output configuration
+      addopts = 
+          -v
+          --strict-markers
+          --tb=short
+          --cov=src/api
+          --cov=src/discord
+          --cov-report=term-missing
+          --cov-report=html
+          --cov-fail-under=80
+      
+      # Markers
+      markers =
+          unit: Unit tests (fast, isolated)
+          integration: Integration tests (multiple components)
+          e2e: End-to-end tests (full request/response cycle)
+          asyncio: Async tests requiring pytest-asyncio
+    
+    validation: "grep -q 'asyncio_mode = auto' pytest.ini && echo '✓ pytest.ini configured'"
+    
+    notes:
+      - "asyncio_mode=auto enables async test functions without decorators"
+      - "Coverage reports generate both terminal output and HTML report"
+      - "Test markers enable selective test execution (e.g., pytest -m unit)"
+
+  # -------------------------------------------------------------------------
+  # STEP 2: Create Shared Test Fixtures (conftest.py)
+  # -------------------------------------------------------------------------
+  
+  step_02_conftest:
+    order: 2
+    file: "tests/conftest.py"
+    purpose: "Provide shared fixtures for mocked Discord client, test app, and utilities"
+    
+    implementation_guide: |
+      Create tests/conftest.py with the following fixtures:
+      
+      **Fixture: mock_discord_client**
+      - Mock DiscordClient with all methods (connect, create_thread, send_message, fetch_messages, disconnect)
+      - Return deterministic IDs and timestamps
+      - Use AsyncMock from unittest.mock for async methods
+      
+      **Fixture: mock_rate_limiter**
+      - Mock RateLimiter that always allows (acquire returns True)
+      - For rate limit tests, create separate fixture that blocks after N calls
+      
+      **Fixture: test_app**
+      - FastAPI TestClient instance
+      - Override Discord client dependency with mock_discord_client
+      - Override rate limiter dependency with mock_rate_limiter
+      - Set test API key in environment
+      
+      **Fixture: sample_author**
+      - Return Author model with test data (agent="TestAgent", model="test-1", run_id="run-123")
+      
+      **Fixture: sample_thread_data**
+      - Return dict with thread_id="thread-123", url="https://discord.com/..."
+      
+      **Fixture: sample_messages**
+      - Return list of Message models for fetch endpoint tests
+      
+      **Fixture: freeze_time**
+      - Return fixed timestamp for deterministic tests
+      - Use "2025-10-06T12:00:00Z" as standard test time
+    
+    code_structure: |
+      # tests/conftest.py
+      """
+      Shared pytest fixtures for Consilium Relay testing.
+      
+      Provides mocked Discord client, test application, and sample data
+      fixtures for deterministic testing without live Discord calls.
+      """
+      
+      import pytest
+      from unittest.mock import AsyncMock, MagicMock
+      from fastapi.testclient import TestClient
+      from datetime import datetime
+      
+      # Import application components
+      from src.main import app
+      from src.api.models import Author, Message
+      from src.discord.client import DiscordClient
+      from src.discord.message_handler import RateLimiter
+      
+      
+      @pytest.fixture
+      def mock_discord_client():
+          """Mock Discord client with deterministic responses."""
+          client = AsyncMock(spec=DiscordClient)
+          
+          # Mock create_thread
+          client.create_thread.return_value = {
+              "thread_id": "thread-123456789012345678",
+              "url": "https://discord.com/channels/123/456/789"
+          }
+          
+          # Mock send_message
+          client.send_message.return_value = "msg-987654321098765432"
+          
+          # Mock fetch_messages
+          client.fetch_messages.return_value = [
+              {
+                  "message_id": "msg-111",
+                  "content": "Test message 1",
+                  "author": {"agent": "TestAgent", "model": "test-1", "run_id": "run-1"},
+                  "timestamp": "2025-10-06T12:00:00Z",
+                  "reply_to": None
+              },
+              {
+                  "message_id": "msg-222",
+                  "content": "Test message 2",
+                  "author": {"agent": "TestAgent", "model": "test-1", "run_id": "run-2"},
+                  "timestamp": "2025-10-06T12:01:00Z",
+                  "reply_to": "msg-111"
+              }
+          ]
+          
+          # Mock connect/disconnect
+          client.connect.return_value = None
+          client.disconnect.return_value = None
+          
+          return client
+      
+      
+      @pytest.fixture
+      def mock_rate_limiter():
+          """Mock rate limiter that always allows requests."""
+          limiter = AsyncMock(spec=RateLimiter)
+          limiter.acquire.return_value = True
+          limiter.get_retry_after.return_value = 0
+          return limiter
+      
+      
+      @pytest.fixture
+      def mock_rate_limiter_blocked():
+          """Mock rate limiter that blocks requests (for 429 testing)."""
+          limiter = AsyncMock(spec=RateLimiter)
+          limiter.acquire.return_value = False
+          limiter.get_retry_after.return_value = 5
+          return limiter
+      
+      
+      @pytest.fixture
+      def test_app(mock_discord_client, mock_rate_limiter, monkeypatch):
+          """FastAPI TestClient with mocked dependencies."""
+          # Override dependencies
+          from src.api import dependencies
+          
+          def override_get_discord_client():
+              return mock_discord_client
+          
+          def override_get_rate_limiter():
+              return mock_rate_limiter
+          
+          app.dependency_overrides[dependencies.get_discord_client] = override_get_discord_client
+          app.dependency_overrides[dependencies.get_rate_limiter] = override_get_rate_limiter
+          
+          # Set test API key
+          monkeypatch.setenv("CONSILIUM_API_KEY", "test_api_key_12345")
+          
+          client = TestClient(app)
+          
+          yield client
+          
+          # Cleanup
+          app.dependency_overrides.clear()
+      
+      
+      @pytest.fixture
+      def sample_author():
+          """Sample Author model for testing."""
+          return {
+              "agent": "TestAgent",
+              "model": "test-model-1",
+              "run_id": "run-abc123"
+          }
+      
+      
+      @pytest.fixture
+      def sample_thread_data():
+          """Sample thread data for testing."""
+          return {
+              "thread_id": "thread-123456789012345678",
+              "url": "https://discord.com/channels/123/456/789"
+          }
+      
+      
+      @pytest.fixture
+      def sample_messages():
+          """Sample messages list for fetch endpoint testing."""
+          return [
+              {
+                  "message_id": "msg-111",
+                  "content": "First test message",
+                  "author": {
+                      "agent": "Claude",
+                      "model": "claude-sonnet-4",
+                      "run_id": "run-001"
+                  },
+                  "timestamp": "2025-10-06T12:00:00Z",
+                  "reply_to": None
+              },
+              {
+                  "message_id": "msg-222",
+                  "content": "Second test message",
+                  "author": {
+                      "agent": "ChatGPT",
+                      "model": "gpt-4",
+                      "run_id": "run-002"
+                  },
+                  "timestamp": "2025-10-06T12:01:00Z",
+                  "reply_to": "msg-111"
+              }
+          ]
+      
+      
+      @pytest.fixture
+      def freeze_time():
+          """Fixed timestamp for deterministic tests."""
+          return "2025-10-06T12:00:00Z"
+    
+    validation: |
+      python - <<'PY'
+      import importlib
+      conftest = importlib.import_module("tests.conftest")
+      required_fixtures = [
+          "mock_discord_client",
+          "mock_rate_limiter",
+          "test_app",
+          "sample_author",
+          "sample_thread_data",
+          "sample_messages"
+      ]
+      for fixture in required_fixtures:
+          assert hasattr(conftest, fixture), f"Missing fixture: {fixture}"
+      print("✓ conftest.py fixtures validated")
+      PY
+    
+    notes:
+      - "AsyncMock required for async methods like create_thread, send_message"
+      - "dependency_overrides allows injecting mocks into FastAPI routes"
+      - "Deterministic IDs/timestamps ensure tests are reproducible"
+
+  # -------------------------------------------------------------------------
+  # STEP 3: Unit Tests for Pydantic Models
+  # -------------------------------------------------------------------------
+  
+  step_03_test_models:
+    order: 3
+    file: "tests/test_models.py"
+    purpose: "Validate Pydantic model validation, serialization, and schema conformance"
+    
+    implementation_guide: |
+      Create tests/test_models.py with unit tests for all Pydantic models:
+      
+      **Test: test_author_model_valid**
+      - Create Author with valid data
+      - Assert all fields present and correct
+      
+      **Test: test_author_model_missing_required**
+      - Attempt to create Author without required fields
+      - Assert ValidationError raised
+      
+      **Test: test_start_thread_request_valid**
+      - Create StartThreadRequest with valid title
+      - Assert validation passes
+      
+      **Test: test_start_thread_request_empty_title**
+      - Create StartThreadRequest with empty title
+      - Assert ValidationError raised (min_length validation)
+      
+      **Test: test_post_message_request_valid**
+      - Create PostMessageRequest with all required fields
+      - Assert validation passes
+      
+      **Test: test_post_message_request_long_content**
+      - Create PostMessageRequest with content >10000 chars
+      - Assert validation passes (will be split by handler)
+      
+      **Test: test_fetch_messages_request_valid**
+      - Create FetchMessagesRequest with thread_id
+      - Assert default limit=50
+      
+      **Test: test_fetch_messages_request_invalid_limit**
+      - Create FetchMessagesRequest with limit=0 or limit>100
+      - Assert ValidationError raised
+      
+      **Test: test_message_model_serialization**
+      - Create Message model
+      - Serialize to dict
+      - Assert all fields present with correct types
+    
+    code_example: |
+      # tests/test_models.py
+      """
+      Unit tests for Pydantic models.
+      
+      Tests validation rules, required fields, and serialization
+      for all API request/response models.
+      """
+      
+      import pytest
+      from pydantic import ValidationError
+      
+      from src.api.models import (
+          Author,
+          StartThreadRequest,
+          StartThreadResponse,
+          PostMessageRequest,
+          PostMessageResponse,
+          FetchMessagesRequest,
+          FetchMessagesResponse,
+          Message
+      )
+      
+      
+      class TestAuthorModel:
+          """Tests for Author model."""
+          
+          def test_author_valid(self):
+              """Author model accepts valid data."""
+              author = Author(
+                  agent="Claude",
+                  model="claude-sonnet-4",
+                  run_id="run-abc123"
+              )
+              assert author.agent == "Claude"
+              assert author.model == "claude-sonnet-4"
+              assert author.run_id == "run-abc123"
+          
+          def test_author_missing_required_fields(self):
+              """Author model rejects missing required fields."""
+              with pytest.raises(ValidationError):
+                  Author(agent="Claude", model="claude-sonnet-4")
+          
+          def test_author_empty_strings(self):
+              """Author model rejects empty strings."""
+              with pytest.raises(ValidationError):
+                  Author(agent="", model="claude-sonnet-4", run_id="run-123")
+      
+      
+      class TestStartThreadRequest:
+          """Tests for StartThreadRequest model."""
+          
+          def test_valid_title(self):
+              """StartThreadRequest accepts valid title."""
+              req = StartThreadRequest(title="Test Discussion")
+              assert req.title == "Test Discussion"
+          
+          def test_empty_title(self):
+              """StartThreadRequest rejects empty title."""
+              with pytest.raises(ValidationError):
+                  StartThreadRequest(title="")
+          
+          def test_long_title(self):
+              """StartThreadRequest accepts long title (up to 100 chars)."""
+              req = StartThreadRequest(title="A" * 100)
+              assert len(req.title) == 100
+      
+      
+      class TestPostMessageRequest:
+          """Tests for PostMessageRequest model."""
+          
+          def test_valid_request(self, sample_author):
+              """PostMessageRequest accepts valid data."""
+              req = PostMessageRequest(
+                  thread_id="thread-123",
+                  author=sample_author,
+                  content="Test message",
+                  reply_to=None
+              )
+              assert req.thread_id == "thread-123"
+              assert req.content == "Test message"
+          
+          def test_long_content(self, sample_author):
+              """PostMessageRequest accepts long content."""
+              content = "A" * 10000
+              req = PostMessageRequest(
+                  thread_id="thread-123",
+                  author=sample_author,
+                  content=content
+              )
+              assert len(req.content) == 10000
+          
+          def test_missing_author(self):
+              """PostMessageRequest rejects missing author."""
+              with pytest.raises(ValidationError):
+                  PostMessageRequest(
+                      thread_id="thread-123",
+                      content="Test"
+                  )
+      
+      
+      class TestFetchMessagesRequest:
+          """Tests for FetchMessagesRequest model."""
+          
+          def test_default_limit(self):
+              """FetchMessagesRequest defaults limit to 50."""
+              req = FetchMessagesRequest(thread_id="thread-123")
+              assert req.limit == 50
+          
+          def test_custom_limit(self):
+              """FetchMessagesRequest accepts custom limit."""
+              req = FetchMessagesRequest(thread_id="thread-123", limit=25)
+              assert req.limit == 25
+          
+          def test_limit_out_of_range(self):
+              """FetchMessagesRequest rejects invalid limit."""
+              with pytest.raises(ValidationError):
+                  FetchMessagesRequest(thread_id="thread-123", limit=0)
+              with pytest.raises(ValidationError):
+                  FetchMessagesRequest(thread_id="thread-123", limit=101)
+      
+      
+      class TestMessageModel:
+          """Tests for Message model."""
+          
+          def test_message_serialization(self, sample_author):
+              """Message model serializes correctly."""
+              msg = Message(
+                  message_id="msg-123",
+                  content="Test content",
+                  author=Author(**sample_author),
+                  timestamp="2025-10-06T12:00:00Z",
+                  reply_to=None
+              )
+              data = msg.model_dump()
+              assert data["message_id"] == "msg-123"
+              assert data["content"] == "Test content"
+              assert data["author"]["agent"] == sample_author["agent"]
+    
+    validation: "pytest tests/test_models.py -v --tb=short"
+    expected_result: "All model tests pass"
+
+  # -------------------------------------------------------------------------
+  # STEP 4: Unit Tests for Message Handler
+  # -------------------------------------------------------------------------
+  
+  step_04_test_message_handler:
+    order: 4
+    file: "tests/test_message_handler.py"
+    purpose: "Test message splitting, attribution embed creation, and rate limiting"
+    
+    implementation_guide: |
+      Create tests/test_message_handler.py with unit tests for:
+      
+      **Test: test_split_message_short**
+      - Input: message <2000 chars
+      - Assert: returns single-item list with original message
+      
+      **Test: test_split_message_long**
+      - Input: message >2000 chars, no code fences
+      - Assert: returns multiple chunks, each ≤2000 chars
+      
+      **Test: test_split_message_preserves_code_fences**
+      - Input: message with ```python code ``` spanning split boundary
+      - Assert: code fences preserved across chunks
+      
+      **Test: test_split_message_multibyte_utf8**
+      - Input: message with emoji/unicode near 2000-char boundary
+      - Assert: no broken UTF-8 sequences
+      
+      **Test: test_create_attribution_embed**
+      - Input: agent, model, run_id
+      - Assert: returns Discord embed dict with correct format
+      
+      **Test: test_rate_limiter_allows_under_limit**
+      - Create RateLimiter(5, 5)
+      - Call acquire() 5 times
+      - Assert: all return True
+      
+      **Test: test_rate_limiter_blocks_over_limit**
+      - Create RateLimiter(5, 5)
+      - Call acquire() 6 times
+      - Assert: 6th returns False
+      
+      **Test: test_rate_limiter_retry_after**
+      - RateLimiter blocked
+      - Call get_retry_after()
+      - Assert: returns positive integer
+    
+    code_example: |
+      # tests/test_message_handler.py
+      """
+      Unit tests for message handling utilities.
+      
+      Tests message splitting, code fence preservation, attribution embeds,
+      and rate limiting logic.
+      """
+      
+      import pytest
+      from src.discord.message_handler import (
+          split_message,
+          create_attribution_embed,
+          RateLimiter
+      )
+      
+      
+      class TestSplitMessage:
+          """Tests for split_message function."""
+          
+          def test_short_message(self):
+              """Short messages are not split."""
+              content = "Short message"
+              chunks = split_message(content, max_length=2000)
+              assert len(chunks) == 1
+              assert chunks[0] == content
+          
+          def test_long_message_no_code_fence(self):
+              """Long messages are split at 2000-char boundaries."""
+              content = "A" * 5000
+              chunks = split_message(content, max_length=2000)
+              assert len(chunks) == 3
+              assert all(len(chunk) <= 2000 for chunk in chunks)
+              assert "".join(chunks) == content
+          
+          def test_preserves_code_fences(self):
+              """Code fences are preserved across splits."""
+              content = "Text before\n```python\n" + ("x = 1\n" * 300) + "```\nText after"
+              chunks = split_message(content, max_length=2000)
+              
+              # Each chunk should have balanced code fences
+              for chunk in chunks:
+                  if "```" in chunk:
+                      assert chunk.count("```") % 2 == 0
+          
+          def test_multibyte_utf8_boundary(self):
+              """Multibyte UTF-8 characters not broken at boundaries."""
+              # Use emoji (4-byte UTF-8) near boundary
+              content = "A" * 1998 + "🎉🎊"
+              chunks = split_message(content, max_length=2000)
+              
+              # Verify all chunks are valid UTF-8
+              for chunk in chunks:
+                  assert chunk == chunk.encode('utf-8').decode('utf-8')
+      
+      
+      class TestCreateAttributionEmbed:
+          """Tests for create_attribution_embed function."""
+          
+          def test_embed_format(self):
+              """Attribution embed has correct format."""
+              embed = create_attribution_embed(
+                  agent="Claude",
+                  model="claude-sonnet-4",
+                  run_id="run-abc123"
+              )
+              
+              assert isinstance(embed, dict)
+              assert "footer" in embed
+              assert "Claude" in str(embed)
+              assert "claude-sonnet-4" in str(embed)
+              assert "run-abc123" in str(embed)
+      
+      
+      class TestRateLimiter:
+          """Tests for RateLimiter class."""
+          
+          @pytest.mark.asyncio
+          async def test_allows_under_limit(self):
+              """Rate limiter allows requests under limit."""
+              limiter = RateLimiter(max_requests=5, window_seconds=5)
+              
+              for _ in range(5):
+                  allowed = await limiter.acquire()
+                  assert allowed is True
+          
+          @pytest.mark.asyncio
+          async def test_blocks_over_limit(self):
+              """Rate limiter blocks requests over limit."""
+              limiter = RateLimiter(max_requests=5, window_seconds=5)
+              
+              # Exhaust limit
+              for _ in range(5):
+                  await limiter.acquire()
+              
+              # Next request should be blocked
+              allowed = await limiter.acquire()
+              assert allowed is False
+          
+          @pytest.mark.asyncio
+          async def test_retry_after(self):
+              """Rate limiter provides retry_after when blocked."""
+              limiter = RateLimiter(max_requests=5, window_seconds=5)
+              
+              # Exhaust limit
+              for _ in range(5):
+                  await limiter.acquire()
+              
+              retry_after = limiter.get_retry_after()
+              assert isinstance(retry_after, int)
+              assert retry_after > 0
+              assert retry_after <= 5
+    
+    validation: "pytest tests/test_message_handler.py -v --tb=short"
+    expected_result: "All message handler tests pass"
+
+  # -------------------------------------------------------------------------
+  # STEP 5: Integration Tests for API Routes
+  # -------------------------------------------------------------------------
+  
+  step_05_test_routes:
+    order: 5
+    file: "tests/test_routes.py"
+    purpose: "Test API endpoints with mocked Discord client"
+    
+    implementation_guide: |
+      Create tests/test_routes.py with integration tests for all Strategy endpoints:
+      
+      **Test: test_start_thread_success**
+      - POST /v1/strategy/start-thread with valid payload
+      - Assert: 201 status, thread_id and url in response
+      
+      **Test: test_start_thread_unauthorized**
+      - POST without X-Consilium-Api-Key header
+      - Assert: 401 status
+      
+      **Test: test_start_thread_invalid_payload**
+      - POST with empty title
+      - Assert: 400 status with validation error
+      
+      **Test: test_post_message_success**
+      - POST /v1/strategy/post with valid payload
+      - Assert: 201 status, message_ids list in response
+      
+      **Test: test_post_message_rate_limited**
+      - Use mock_rate_limiter_blocked fixture
+      - POST /v1/strategy/post
+      - Assert: 202 status, Retry-After header present
+      
+      **Test: test_post_message_thread_not_found**
+      - POST with invalid thread_id (mock returns 404)
+      - Assert: 404 status
+      
+      **Test: test_fetch_messages_success**
+      - GET /v1/strategy/fetch?thread_id=X
+      - Assert: 200 status, messages list in response
+      
+      **Test: test_fetch_messages_unauthorized**
+      - GET without API key
+      - Assert: 401 status
+      
+      **Test: test_fetch_messages_missing_thread_id**
+      - GET without thread_id query param
+      - Assert: 400 status
+      
+      **Test: test_health_endpoint**
+      - GET /v1/system/health
+      - Assert: 200 status, {"status": "healthy"}
+      
+      **Test: test_info_endpoint**
+      - GET /v1/system/info
+      - Assert: 200 status, version info present
+    
+    code_example: |
+      # tests/test_routes.py
+      """
+      Integration tests for API routes.
+      
+      Tests request/response cycles for all Strategy API endpoints
+      with mocked Discord client.
+      """
+      
+      import pytest
+      
+      
+      class TestStartThreadEndpoint:
+          """Tests for POST /v1/strategy/start-thread."""
+          
+          def test_success(self, test_app):
+              """Start thread returns 201 with thread data."""
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={"title": "Test Discussion"}
+              )
+              
+              assert response.status_code == 201
+              data = response.json()
+              assert "thread_id" in data
+              assert "url" in data
+              assert data["thread_id"].startswith("thread-")
+          
+          def test_unauthorized(self, test_app):
+              """Start thread without API key returns 401."""
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  json={"title": "Test Discussion"}
+              )
+              
+              assert response.status_code == 401
+          
+          def test_invalid_payload(self, test_app):
+              """Start thread with empty title returns 400."""
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={"title": ""}
+              )
+              
+              assert response.status_code == 400
+      
+      
+      class TestPostMessageEndpoint:
+          """Tests for POST /v1/strategy/post."""
+          
+          def test_success(self, test_app, sample_author):
+              """Post message returns 201 with message IDs."""
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": "thread-123",
+                      "author": sample_author,
+                      "content": "Test message",
+                      "reply_to": None
+                  }
+              )
+              
+              assert response.status_code == 201
+              data = response.json()
+              assert "message_ids" in data
+              assert isinstance(data["message_ids"], list)
+              assert len(data["message_ids"]) > 0
+          
+          def test_rate_limited(self, test_app, sample_author, mock_rate_limiter_blocked, monkeypatch):
+              """Post message when rate limited returns 202."""
+              # Override rate limiter to blocked state
+              from src.api import dependencies
+              app = test_app.app
+              app.dependency_overrides[dependencies.get_rate_limiter] = lambda: mock_rate_limiter_blocked
+              
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": "thread-123",
+                      "author": sample_author,
+                      "content": "Test message"
+                  }
+              )
+              
+              assert response.status_code == 202
+              assert "Retry-After" in response.headers
+          
+          def test_unauthorized(self, test_app, sample_author):
+              """Post message without API key returns 401."""
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  json={
+                      "thread_id": "thread-123",
+                      "author": sample_author,
+                      "content": "Test"
+                  }
+              )
+              
+              assert response.status_code == 401
+      
+      
+      class TestFetchMessagesEndpoint:
+          """Tests for GET /v1/strategy/fetch."""
+          
+          def test_success(self, test_app):
+              """Fetch messages returns 200 with messages list."""
+              response = test_app.get(
+                  "/v1/strategy/fetch",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  params={"thread_id": "thread-123"}
+              )
+              
+              assert response.status_code == 200
+              data = response.json()
+              assert "messages" in data
+              assert isinstance(data["messages"], list)
+          
+          def test_unauthorized(self, test_app):
+              """Fetch messages without API key returns 401."""
+              response = test_app.get(
+                  "/v1/strategy/fetch",
+                  params={"thread_id": "thread-123"}
+              )
+              
+              assert response.status_code == 401
+          
+          def test_missing_thread_id(self, test_app):
+              """Fetch messages without thread_id returns 400."""
+              response = test_app.get(
+                  "/v1/strategy/fetch",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"}
+              )
+              
+              assert response.status_code == 400
+      
+      
+      class TestSystemEndpoints:
+          """Tests for system endpoints."""
+          
+          def test_health(self, test_app):
+              """Health endpoint returns 200."""
+              response = test_app.get("/v1/system/health")
+              
+              assert response.status_code == 200
+              data = response.json()
+              assert data["status"] == "healthy"
+          
+          def test_info(self, test_app):
+              """Info endpoint returns version information."""
+              response = test_app.get("/v1/system/info")
+              
+              assert response.status_code == 200
+              data = response.json()
+              assert "version" in data
+    
+    validation: "pytest tests/test_routes.py -v --tb=short"
+    expected_result: "All route tests pass"
+
+  # -------------------------------------------------------------------------
+  # STEP 6: End-to-End Integration Tests
+  # -------------------------------------------------------------------------
+  
+  step_06_test_integration:
+    order: 6
+    file: "tests/test_integration.py"
+    purpose: "Test complete workflows across multiple endpoints"
+    
+    implementation_guide: |
+      Create tests/test_integration.py with end-to-end scenarios:
+      
+      **Test: test_complete_conversation_flow**
+      - Create thread
+      - Post message to thread
+      - Fetch messages from thread
+      - Assert: all operations succeed, data consistent
+      
+      **Test: test_message_splitting_e2e**
+      - Post message >2000 chars
+      - Assert: multiple message_ids returned
+      - Fetch messages
+      - Assert: messages fetched correctly
+      
+      **Test: test_reply_chain**
+      - Post message 1
+      - Post message 2 (reply_to message 1)
+      - Fetch messages
+      - Assert: reply_to field correctly populated
+      
+      **Test: test_concurrent_posts_with_rate_limiting**
+      - Simulate rapid posts
+      - Assert: some return 201, some return 202
+      - Assert: rate limiting applied correctly
+    
+    code_example: |
+      # tests/test_integration.py
+      """
+      End-to-end integration tests.
+      
+      Tests complete workflows spanning multiple API endpoints
+      to validate system behavior.
+      """
+      
+      import pytest
+      
+      
+      @pytest.mark.e2e
+      class TestCompleteWorkflow:
+          """End-to-end workflow tests."""
+          
+          def test_conversation_flow(self, test_app, sample_author):
+              """Complete conversation: create thread, post, fetch."""
+              # 1. Create thread
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={"title": "E2E Test Thread"}
+              )
+              assert response.status_code == 201
+              thread_data = response.json()
+              thread_id = thread_data["thread_id"]
+              
+              # 2. Post message to thread
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": thread_id,
+                      "author": sample_author,
+                      "content": "First message in thread"
+                  }
+              )
+              assert response.status_code == 201
+              post_data = response.json()
+              assert len(post_data["message_ids"]) > 0
+              
+              # 3. Fetch messages from thread
+              response = test_app.get(
+                  "/v1/strategy/fetch",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  params={"thread_id": thread_id}
+              )
+              assert response.status_code == 200
+              fetch_data = response.json()
+              assert len(fetch_data["messages"]) > 0
+          
+          def test_long_message_splitting(self, test_app, sample_author):
+              """Long messages are split and fetchable."""
+              # Create thread
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={"title": "Long Message Test"}
+              )
+              thread_id = response.json()["thread_id"]
+              
+              # Post long message (>2000 chars)
+              long_content = "A" * 5000
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": thread_id,
+                      "author": sample_author,
+                      "content": long_content
+                  }
+              )
+              assert response.status_code == 201
+              post_data = response.json()
+              
+              # Should return multiple message IDs (split)
+              assert len(post_data["message_ids"]) > 1
+          
+          def test_reply_chain(self, test_app, sample_author):
+              """Messages can reply to previous messages."""
+              # Create thread
+              response = test_app.post(
+                  "/v1/strategy/start-thread",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={"title": "Reply Chain Test"}
+              )
+              thread_id = response.json()["thread_id"]
+              
+              # Post first message
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": thread_id,
+                      "author": sample_author,
+                      "content": "First message"
+                  }
+              )
+              first_msg_id = response.json()["message_ids"][0]
+              
+              # Post reply
+              response = test_app.post(
+                  "/v1/strategy/post",
+                  headers={"X-Consilium-Api-Key": "test_api_key_12345"},
+                  json={
+                      "thread_id": thread_id,
+                      "author": sample_author,
+                      "content": "Reply to first",
+                      "reply_to": first_msg_id
+                  }
+              )
+              assert response.status_code == 201
+    
+    validation: "pytest tests/test_integration.py -v --tb=short -m e2e"
+    expected_result: "All e2e tests pass"
+
+# ===========================================================================
+# COMPREHENSIVE VALIDATION SUITE
+# ===========================================================================
+
+comprehensive_validation:
+  description: "Full test suite execution with coverage reporting"
+  
+  validation_01_all_tests:
+    name: "Run All Tests"
+    command: "pytest -v --tb=short"
+    expected: "All tests pass"
+  
+  validation_02_coverage:
+    name: "Coverage Report"
+    command: "pytest --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80"
+    expected: "Coverage ≥80% for src/api and src/discord"
+  
+  validation_03_unit_only:
+    name: "Unit Tests Only"
+    command: "pytest -m unit -v"
+    expected: "All unit tests pass"
+  
+  validation_04_integration_only:
+    name: "Integration Tests Only"
+    command: "pytest -m integration -v"
+    expected: "All integration tests pass"
+  
+  validation_05_e2e_only:
+    name: "E2E Tests Only"
+    command: "pytest -m e2e -v"
+    expected: "All e2e tests pass"
+  
+  validation_06_lint:
+    name: "Lint Tests"
+    command: "ruff check tests/"
+    expected: "No lint errors"
+  
+  validation_07_type_check:
+    name: "Type Check Tests"
+    command: "mypy tests/ --ignore-missing-imports"
+    expected: "No type errors"
+
+# ===========================================================================
+# CI GATE (Final Acceptance)
+# ===========================================================================
+
+ci_gate:
+  commands: |
+    ruff check tests/
+    mypy tests/ --ignore-missing-imports
+    pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80
+  expected: "All checks pass; tests pass; coverage ≥80%"
+
+# ===========================================================================
+# COMPLETION STATUS
+# ===========================================================================
+
+completion_status:
+  status: "DRAFT"
+  
+  completion_criteria:
+    - "[ ] All test files created (conftest, test_models, test_message_handler, test_routes, test_integration)"
+    - "[ ] pytest.ini configured"
+    - "[ ] All unit tests pass"
+    - "[ ] All integration tests pass"
+    - "[ ] All e2e tests pass"
+    - "[ ] Coverage ≥80% for src/api and src/discord"
+    - "[ ] Lint checks pass (ruff)"
+    - "[ ] Type checks pass (mypy)"
+    - "[ ] No live Discord calls in tests"
+    - "[ ] Tests are deterministic (repeatable results)"
+  
+  when_complete:
+    - "Convert all tense to past tense"
+    - "Update status to COMPLETE"
+    - "Update PHASE_NOTES.md with test coverage metrics"
+    - "Proceed to Phase 8 (Containerization)"
+
+# ===========================================================================
+# ROLLBACK PROCEDURE
+# ===========================================================================
+
+rollback_procedure:
+  description: "Rollback if validation fails"
+  steps:
+    - "git checkout -- tests/ pytest.ini"
+    - "Verify previous green state"
+    - "Review test failures"
+    - "Fix issues and revalidate"
+
+# ===========================================================================
+# NOTES & REFERENCES
+# ===========================================================================
+
+notes:
+  - "Use pytest-asyncio for async test functions"
+  - "AsyncMock required for mocking async methods"
+  - "TestClient from FastAPI handles async routes automatically"
+  - "dependency_overrides enables injecting mocks"
+  - "Coverage HTML report generated in htmlcov/ directory"
+  - "Test markers (unit/integration/e2e) enable selective execution"
+  - "Deterministic fixtures ensure reproducible tests"
+  - "No time.sleep() - use async/await for timing"
+
+references:
+  - "pytest documentation: https://docs.pytest.org/"
+  - "pytest-asyncio: https://pytest-asyncio.readthedocs.io/"
+  - "pytest-cov: https://pytest-cov.readthedocs.io/"
+  - "FastAPI testing: https://fastapi.tiangolo.com/tutorial/testing/"
+  - "unittest.mock: https://docs.python.org/3/library/unittest.mock.html"
+
+# ===========================================================================
+# END OF IMPLEMENTATION
+# ===========================================================================

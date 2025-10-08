@@ -1,0 +1,172 @@
+---
+doc_type: ARCHITECTURE
+template_version: 1.1.0
+architecture_id: "phase_08_architecture"
+doc_title: "Phase 8 — Containerization — Architecture"
+phase_id: "phase_08"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-07T22:51:37Z"
+last_updated_utc: "2025-10-07T22:51:37Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "./phase_08_BLUEPRINT.yaml"
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_04_BLUEPRINT.yaml"
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_BLUEPRINT.yaml"
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+    - "./phase_07_BLUEPRINT.yaml"
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_08_IMPLEMENTATION.yaml"
+  updates:
+    - "../TECHNICAL_DECISIONS.md"
+    - "../PHASE_NOTES.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define HOW to containerize the relay with Dockerfile/compose and
+     document operational procedures.
+  2. Conformance: Follow the Blueprint Contract and Phase Plan deliverables.
+  3. Tense: Future while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy the Contract block verbatim from the Blueprint.
+  5. Validation: CI Gate must be scriptable (build, run, health check).
+
+sections:
+
+  module_map: |
+    Dockerfile
+    docker-compose.yml
+    .dockerignore
+    docs/
+      08_DOCKER.md
+    src/
+    requirements.txt
+
+  image_design:
+    stages:
+      - name: "builder"
+        base: "python:3.11-slim"
+        steps:
+          - "WORKDIR /app"
+          - "COPY requirements.txt ./"
+          - "RUN pip install --no-cache-dir -r requirements.txt"
+          - "COPY src/ ./src/"
+      - name: "runtime"
+        base: "python:3.11-slim"
+        steps:
+          - "RUN useradd -m appuser"
+          - "WORKDIR /app"
+          - "COPY --from=builder /app /app"
+          - "EXPOSE 8000"
+          - 'CMD ["uvicorn","src.main:app","--host","0.0.0.0","--port","8000"]'
+          - "USER appuser"
+
+  compose_service:
+    name: "relay"
+    env: ".env (gitignored)"
+    ports: ["8000:8000"]
+    restart: "unless-stopped"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/v1/system/health"]
+      interval: "30s"
+      timeout: "3s"
+      retries: 3
+
+  documentation:
+    docs_file: "docs/08_DOCKER.md"
+    must_include:
+      - "Build command: docker build -t consilium-relay ."
+      - "Run command: docker compose up"
+      - "How to view logs"
+      - "How to stop container"
+
+  non_functional_requirements:
+    - "Image size minimized via multi-stage build and .dockerignore."
+    - "Run as non-root user."
+    - "Environment via .env; secrets never baked into image."
+    - "Expose port 8000; readiness based on /v1/system/health."
+
+  contract:
+    purpose: "Package the relay as a reproducible Docker image and a compose service for consistent local execution and pre-deployment verification."
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_04_BLUEPRINT.yaml"
+      - "./phase_04_ARCHITECTURE.yaml"
+      - "./phase_04_IMPLEMENTATION.yaml"
+      - "./phase_05_BLUEPRINT.yaml"
+      - "./phase_05_ARCHITECTURE.yaml"
+      - "./phase_05_IMPLEMENTATION.yaml"
+      - "./phase_06_BLUEPRINT.yaml"
+      - "./phase_06_ARCHITECTURE.yaml"
+      - "./phase_06_IMPLEMENTATION.yaml"
+      - "./phase_07_BLUEPRINT.yaml"
+      - "./phase_07_ARCHITECTURE.yaml"
+      - "./phase_07_IMPLEMENTATION.yaml"
+    outputs:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "docs/08_DOCKER.md"
+    acceptance:
+      ci_gate: |
+        docker build -t consilium-relay:latest .
+        docker compose up -d
+        python - <<'PY'
+        import time, urllib.request, sys
+        for _ in range(30):
+            try:
+                with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                    if r.status == 200:
+                        print("Health OK"); sys.exit(0)
+            except Exception:
+                time.sleep(1)
+        print("Health check failed"); sys.exit(1)
+        PY
+      expected: "Image builds; compose starts; health endpoint returns 200."
+    rollback: "git checkout -- Dockerfile docker-compose.yml .dockerignore docs/08_DOCKER.md"
+
+ci_gate:
+  commands: |
+    ruff check Dockerfile
+    docker build -t consilium-relay:latest .
+    docker compose up -d
+    python - <<'PY'
+    import time, urllib.request, sys
+    for _ in range(30):
+        try:
+            with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                if r.status == 200:
+                    print("Health OK"); sys.exit(0)
+        except Exception:
+            time.sleep(1)
+    print("Health check failed"); sys.exit(1)
+    PY
+  expected: "Linters pass; image builds; service responds healthy."
+
+rollback_procedure:
+  - "Revert files listed in Contract.outputs."
+  - "If needed, reset to last passing commit."

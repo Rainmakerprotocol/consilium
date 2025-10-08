@@ -1,0 +1,136 @@
+---
+doc_type: BLUEPRINT
+template_version: 1.1.0
+blueprint_id: "phase_08_blueprint"
+doc_title: "Phase 8 — Containerization — Blueprint"
+phase_id: "phase_08"
+api_version: "v1.1"
+status: "DRAFT"
+created_utc: "2025-10-07T22:51:37Z"
+last_updated_utc: "2025-10-07T22:51:37Z"
+canonical_spec_path: "../01_spec/02_OPENAPI_SCHEMA.yaml"
+
+authority_order:
+  - "00_AI_AGENT_RULES.md"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes:
+    - "../00_parent/00_COPILOT_README.md"
+    - "../consilium-9_phase_plan.yml"
+    - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+    - "./phase_04_BLUEPRINT.yaml"
+    - "./phase_04_ARCHITECTURE.yaml"
+    - "./phase_04_IMPLEMENTATION.yaml"
+    - "./phase_05_BLUEPRINT.yaml"
+    - "./phase_05_ARCHITECTURE.yaml"
+    - "./phase_05_IMPLEMENTATION.yaml"
+    - "./phase_06_BLUEPRINT.yaml"
+    - "./phase_06_ARCHITECTURE.yaml"
+    - "./phase_06_IMPLEMENTATION.yaml"
+    - "./phase_07_BLUEPRINT.yaml"
+    - "./phase_07_ARCHITECTURE.yaml"
+    - "./phase_07_IMPLEMENTATION.yaml"
+  produces:
+    - "./phase_08_ARCHITECTURE.yaml"
+    - "./phase_08_IMPLEMENTATION.yaml"
+  updates:
+    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.md"
+
+---
+
+copilot_instructions: |
+  1. Purpose: Define WHY Phase 8 exists and WHAT must be delivered to package
+     the relay in a reproducible Docker container.
+  2. Read order: Phase-0 rules → Canonical OpenAPI v1.1 → Phases 4–7 → This Blueprint.
+  3. Tense policy: Use future tense while DRAFT; convert to past tense when COMPLETE.
+  4. Carry forward: Copy this Contract block verbatim into Phase 8 Architecture
+     and Implementation.
+  5. Validation: Acceptance criteria must be objective and scriptable.
+  6. Non-goals: No new API endpoints; packaging only (logic unchanged).
+
+sections:
+
+  summary: >
+    Phase 8 packages the Consilium Relay as a small, secure, reproducible Docker
+    image and supplies a docker-compose service for local runs. Deliverables
+    include Dockerfile, docker-compose.yml, .dockerignore, and docs/08_DOCKER.md.
+    Validation covers building, starting, health-checking, and executing the test
+    suite within the container.
+
+  contract:
+    purpose: >
+      Package the relay as a reproducible Docker image and a compose service for
+      consistent local execution and pre-deployment verification.
+    inputs:
+      - "../00_parent/00_COPILOT_README.md"
+      - "../consilium-9_phase_plan.yml"
+      - "../01_spec/02_OPENAPI_SCHEMA.yaml"
+      - "./phase_04_BLUEPRINT.yaml"
+      - "./phase_04_ARCHITECTURE.yaml"
+      - "./phase_04_IMPLEMENTATION.yaml"
+      - "./phase_05_BLUEPRINT.yaml"
+      - "./phase_05_ARCHITECTURE.yaml"
+      - "./phase_05_IMPLEMENTATION.yaml"
+      - "./phase_06_BLUEPRINT.yaml"
+      - "./phase_06_ARCHITECTURE.yaml"
+      - "./phase_06_IMPLEMENTATION.yaml"
+      - "./phase_07_BLUEPRINT.yaml"
+      - "./phase_07_ARCHITECTURE.yaml"
+      - "./phase_07_IMPLEMENTATION.yaml"
+    outputs:
+      - "Dockerfile"
+      - "docker-compose.yml"
+      - ".dockerignore"
+      - "docs/08_DOCKER.md"
+    acceptance:
+      ci_gate: |
+        docker build -t consilium-relay:latest .
+        docker compose up -d
+        python - <<'PY'
+        import time, urllib.request, sys
+        for _ in range(30):
+            try:
+                with urllib.request.urlopen("http://localhost:8000/v1/system/health", timeout=1) as r:
+                    if r.status == 200:
+                        print("Health OK"); sys.exit(0)
+            except Exception:
+                time.sleep(1)
+        print("Health check failed"); sys.exit(1)
+        PY
+      expected: "Image builds; compose starts; health endpoint returns 200."
+    rollback: "git checkout -- Dockerfile docker-compose.yml .dockerignore docs/08_DOCKER.md"
+
+  deliverables:
+    - "Dockerfile: FROM python:3.11-slim, WORKDIR /app, install requirements, copy src/, EXPOSE 8000, CMD uvicorn, run as non-root."
+    - "docker-compose.yml: service for relay, env from .env, port 8000:8000, restart policy."
+    - ".dockerignore: exclude .env, tests/, docs/, __pycache__/, .git."
+    - "docs/08_DOCKER.md: build/run commands, logs, stop instructions."
+
+  success_criteria:
+    - "docker build succeeds without errors."
+    - "docker compose up starts relay; health probe returns 200."
+    - "pytest can run successfully in a containerized context (test target/stage)."
+    - "Image uses <500MB of disk (approximate; multi-stage recommended)."
+
+  risks_and_mitigations:
+    - "Large image size → multi-stage build, .dockerignore, only prod deps in final stage."
+    - "Root user risk → add non-root user and drop privileges."
+    - "Port conflicts → configurable via compose; default 8000."
+    - "Missing env vars → document .env usage in docs/08_DOCKER.md; fail fast."
+
+  rollback_procedure:
+    - "Revert container files; validate local venv run still succeeds."
+    - "If failing builds persist, pin base image digest and retry."
+
+  cross_doc_links:
+    architecture: "./phase_08_ARCHITECTURE.yaml"
+    implementation: "./phase_08_IMPLEMENTATION.yaml"
+    related_adrs:
+      - "../adr/ADR-0008-containerization-strategy.md"
