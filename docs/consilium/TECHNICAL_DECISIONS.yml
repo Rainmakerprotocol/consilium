@@ -1,58 +1,111 @@
-# Technical Decisions Log
-# Architectural decisions and rationale tracking
+---
+doc_type: TECHNICAL_DECISIONS
+template_version: 1.1.0
+doc_title: "Phase 0 — Technical Decisions Log"
+status: DRAFT
+created_utc: "2025-10-08T11:28:00Z"
+last_updated_utc: "2025-10-08T11:28:00Z"
 
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+update_protocol: "tense_management"
+audience: [copilot, ai_agents, human_developers, chairman]
+
+# =====================
+# DECISIONS (MVP)
+# =====================
 decisions:
   framework_selection:
     decision: "FastAPI chosen as web framework"
-    rationale: "Async-first design, automatic OpenAPI generation, type safety with Pydantic"
+    rationale: "Async-first design, OpenAPI generation, type safety with Pydantic"
     alternatives_considered: ["Flask", "Django", "Starlette"]
-    date: "Phase 1"
+    phase: "1"
     status: "accepted"
-    
+    impact: "Defines route structure, async handlers, and Pydantic integration"
+
   discord_library:
     decision: "discord.py for Discord integration"
     rationale: "Mature async library, gateway management, comprehensive API coverage"
     alternatives_considered: ["py-cord", "disnake", "raw Discord API"]
-    date: "Phase 1"
+    phase: "1"
     status: "accepted"
-    
+    impact: "Client abstraction and message flow semantics"
+
   rate_limiting_strategy:
     decision: "Token bucket algorithm for Discord API rate limiting"
     rationale: "Smooth request distribution, burst handling, predictable behavior"
-    alternatives_considered: ["Fixed window", "Sliding window", "No rate limiting"]
-    date: "Phase 1"
+    alternatives_considered: ["Fixed window","Sliding window","No rate limiting"]
+    phase: "1"
     status: "accepted"
-    
-  authentication_approach:
-    decision: "Simple API key authentication for MVP"
-    rationale: "Minimal complexity for single-user system, easily testable"
-    alternatives_considered: ["OAuth2", "JWT tokens", "Discord OAuth"]
-    date: "Phase 1"
-    status: "accepted"
-    
-  deployment_target:
-    decision: "Railway.app as primary deployment platform"
-    rationale: "Simple container deployment, environment variable management, cost-effective for MVP"
-    alternatives_considered: ["Fly.io", "Heroku", "DigitalOcean", "AWS"]
-    date: "Phase 1"
-    status: "accepted"
-    
-  message_attribution:
-    decision: "Discord embed footers for AI agent attribution"
-    rationale: "Visible but non-intrusive, supports structured metadata, preserves message content"
-    alternatives_considered: ["Message prefixes", "Webhook names", "Thread titles"]
-    date: "Phase 1"
-    status: "accepted"
+    impact: "Controls queue behavior and 202/Retry-After semantics"
 
+  authentication_approach:
+    decision: "API key authentication for MVP"
+    rationale: "Minimal complexity for single-user system, easily testable"
+    alternatives_considered: ["OAuth2","JWT","Discord OAuth"]
+    phase: "1"
+    status: "accepted"
+    impact: "All Strategy endpoints require X-Consilium-Api-Key"
+
+  deployment_target:
+    decision: "Railway as primary deployment platform"
+    rationale: "Simple container deployment, env var management, cost-effective"
+    alternatives_considered: ["Fly.io","Heroku","DigitalOcean","AWS"]
+    phase: "9"
+    status: "accepted"
+    impact: "Container image and health checks aligned to platform"
+
+  message_attribution:
+    decision: "Discord embed footer for AI attribution"
+    rationale: "Visible but non-intrusive; supports structured metadata"
+    alternatives_considered: ["Message prefixes","Webhook names","Thread titles"]
+    phase: "6"
+    status: "accepted"
+    impact: "Consistent attribution (agent/model/run_id) across messages"
+
+# ======================
+# DECISION TEMPLATE
+# ======================
 decision_template:
   decision: "Brief statement of what was decided"
-  rationale: "Why this decision was made, benefits and trade-offs"
+  rationale: "Why this decision was made; benefits and trade-offs"
   alternatives_considered: ["Other options that were evaluated"]
-  date: "Phase when decision was made"
+  phase: "1-9 (or 0 for governance)"
   status: "accepted | rejected | superseded | pending"
   impact: "How this affects implementation and future decisions"
-  
+
+# ===================
+# INTEGRATION NOTES
+# ===================
+integration_notes:
+  spec_alignment: "All decisions must be compatible with consilium-openapi-v1.1.yaml"
+  testing_alignment: "Decisions must preserve ≥80% coverage and deterministic tests"
+  containerization: "Decisions should not increase the final image beyond MVP needs"
+
+# ===============
+# ACCEPTANCE
+# ===============
+acceptance:
+  ci_gate: |
+    python - <<'PY'
+    import sys, yaml, pathlib
+    data = yaml.safe_load(pathlib.Path("TECHNICAL_DECISIONS.yml").read_text(encoding="utf-8"))
+    required = ["framework_selection","discord_library","rate_limiting_strategy","authentication_approach","deployment_target","message_attribution"]
+    missing = [k for k in required if k not in data.get("decisions", {})]
+    sys.exit(1 if missing else 0)
+    PY
+  expected: "All core MVP decisions present"
+  rollback: "git checkout -- TECHNICAL_DECISIONS.yml"
+
+# ==================
+# AI PARSING USAGE
+# ==================
 ai_parsing_usage:
   current_decisions: "decisions.*"
-  decision_reference: "Use for consistent implementation choices"
+  decision_reference: "Use to keep implementation choices consistent"
   template_usage: "decision_template for documenting new decisions"
+  update_instructions: "Add new decisions as needed; update status when resolved"
+  review_frequency: "Review and update at the end of each phase or when major changes occur

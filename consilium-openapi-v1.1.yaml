@@ -1,30 +1,33 @@
-openapi: 3.0.3
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 info:
   title: Consilium Relay API
   version: "1.1.0"
   description: |
     Consilium Relay — v1 API for multi‑AI collaboration via Discord.
-    This revision adds operational endpoints (health/info) and clarifies headers for idempotency and rate‑limit awareness.
-    MVP scope remains:
-      • Create decision threads
-      • Post attributed messages (with splitting & rate-limit aware queuing on server)
-      • Fetch normalized messages from a thread
 
-    Security: API key via 'X-Consilium-Api-Key' header. Discord bot token is **never** exposed here.
+    Scope synthesized from Phases 1–9:
+      • System ops (health/info) for containerization & deployment checks (Phases 4, 8–9)
+      • Strategy lifecycle: create thread, post attributed messages (split & queue aware), fetch messages (Phases 5–6)
+      • Headers clarify idempotency and rate‑limit awareness (Phases 5–6, 7)
+      • Error model standardized for deterministic testing & docs (Phases 1, 7)
+
+    Security: API key via 'X-Consilium-Api-Key' header. The Discord bot token is **never** exposed.
 
 servers:
   - url: https://relay.consilium.local
-    description: Example local/edge URL (replace in deployment)
+    description: Local/edge URL (replace in deployment)
   - url: https://{host}
+    description: Deployed host
     variables:
       host:
         default: example.com
 
 tags:
-  - name: Strategy
-    description: Decision-thread lifecycle
   - name: System
     description: Health and metadata
+  - name: Strategy
+    description: Decision-thread lifecycle
 
 security:
   - ApiKeyAuth: []
@@ -46,13 +49,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
         default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/UnexpectedError"
 
   /v1/system/info:
     get:
@@ -66,13 +65,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InfoResponse'
+                $ref: "#/components/schemas/InfoResponse"
         default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/UnexpectedError"
 
   /v1/strategy/start-thread:
     post:
@@ -87,7 +82,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/StartThreadRequest'
+              $ref: "#/components/schemas/StartThreadRequest"
             examples:
               basic:
                 value:
@@ -103,25 +98,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StartThreadResponse'
-              examples:
-                created:
-                  value:
-                    thread_id: "123456789012345678"
-                    url: "https://discord.com/channels/111.../222.../333..."
-                    created_at: "2025-10-02T14:30:00Z"
+                $ref: "#/components/schemas/StartThreadResponse"
         "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/BadRequest"
         "401":
-          description: Unauthorized (missing or invalid API key)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Unauthorized"
         "429":
           description: Rate limited at relay or Discord
           headers:
@@ -131,13 +112,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/UnexpectedError"
 
   /v1/strategy/post:
     post:
@@ -162,7 +139,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PostMessageRequest'
+              $ref: "#/components/schemas/PostMessageRequest"
             examples:
               attributed:
                 value:
@@ -187,7 +164,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PostMessageResponse'
+                $ref: "#/components/schemas/PostMessageResponse"
         "202":
           description: Accepted for delivery (queued due to rate limits); client may poll fetch
           headers:
@@ -197,25 +174,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PostMessageResponse'
+                $ref: "#/components/schemas/PostMessageResponse"
         "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/BadRequest"
         "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Thread not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/NotFound"
         "429":
           description: Client must slow down (relay-applied)
           headers:
@@ -225,13 +190,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/UnexpectedError"
 
   /v1/strategy/fetch:
     get:
@@ -269,7 +230,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FetchMessagesResponse'
+                $ref: "#/components/schemas/FetchMessagesResponse"
               examples:
                 page:
                   value:
@@ -293,29 +254,13 @@ paths:
                         reply_to: "m_001"
                     next_after_ts: "2025-10-02T14:31:03Z"
         "400":
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/BadRequest"
         "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Thread not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/NotFound"
         default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          $ref: "#/components/responses/UnexpectedError"
 
 components:
   securitySchemes:
@@ -323,6 +268,32 @@ components:
       type: apiKey
       in: header
       name: X-Consilium-Api-Key
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    UnexpectedError:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
 
   schemas:
     HealthResponse:
@@ -367,6 +338,7 @@ components:
         room_id:
           type: string
           description: Optional logical room/guild identifier (for future multi-tenancy)
+
     StartThreadResponse:
       type: object
       required: [thread_id, url, created_at]
@@ -387,7 +359,7 @@ components:
         thread_id:
           type: string
         author:
-          $ref: '#/components/schemas/Author'
+          $ref: "#/components/schemas/Author"
         content:
           type: string
         mode:
@@ -399,6 +371,7 @@ components:
           type: string
           nullable: true
           description: Optional message id to reply to (relay will map to Discord reply)
+
     PostMessageResponse:
       type: object
       required: [status]
@@ -426,7 +399,7 @@ components:
         messages:
           type: array
           items:
-            $ref: '#/components/schemas/Message'
+            $ref: "#/components/schemas/Message"
         next_after_ts:
           type: string
           format: date-time
@@ -443,7 +416,7 @@ components:
           type: string
           format: date-time
         author:
-          $ref: '#/components/schemas/Author'
+          $ref: "#/components/schemas/Author"
         content:
           type: string
         reply_to:
@@ -476,7 +449,7 @@ components:
         error:
           type: string
           description: Machine-readable error code
-          example: "bad_request"
+          examples: ["bad_request","invalid_credentials","thread_not_found","rate_limited"]
         message:
           type: string
           description: Human-readable description
@@ -484,3 +457,5 @@ components:
           type: object
           additionalProperties: true
           nullable: true
+          description: Optional additional error details
+          

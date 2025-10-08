@@ -1,86 +1,126 @@
 # Phase 0: Validation Framework and Quality Gates
 # Success criteria and validation procedures for all phases
 
+---
+doc_type: VALIDATION_FRAMEWORK
+template_version: 1.1.0
+doc_title: "Phase 0 — Validation Framework & Quality Gates"
+status: DRAFT
+created_utc: "2025-10-08T11:10:00Z"
+last_updated_utc: "2025-10-08T11:10:00Z"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+update_protocol: "tense_management"
+audience: [copilot, ai_agents, human_developers, chairman]
+
+# =====================
+# QUALITY GATES (GLOBAL)
+# =====================
 quality_gates:
   code_quality:
-    type_hints: "All functions must include explicit type hints"
-    docstrings: "Public functions require Google-style docstrings"
-    pep8_compliance: "Black formatting + 80 character line limit"
-    imports: "Absolute imports, grouped stdlib -> third-party -> local"
-    
+    type_hints: "All public functions include explicit type hints"
+    docstrings: "Google-style docstrings for public APIs"
+    pep8: "Black formatting; 80-character line length"
+    imports: "Absolute imports; stdlib → third-party → local"
+    linting: "ruff ."
+    typing: "mypy --strict ."
+  documentation:
+    required_sections: ["summary","contract","deliverables","success_criteria","risks_and_mitigations","rollback_procedure","cross_doc_links"]
+    yaml_schema_validation: true
+    field_completeness: "All required fields populated"
+  functionality:
+    api_contract_compliance: "Endpoints match consilium-openapi-v1.1.yaml exactly"
+    discord_integration: "Threads create; messages post/fetch; attribution present"
+    error_handling: "Structured error object: {error,message,details?}"
+    rate_limiting: "Queue returns 202 + Retry-After; no Discord 429s during normal load"
   test_coverage:
     minimum_threshold: 80
-    target_modules: ["src.api", "src.discord", "src.core"]
-    test_types: ["unit", "integration", "end_to_end"]
-    mock_external: "All external APIs (Discord, HTTP clients)"
-    
-  documentation:
-    required_sections: ["purpose", "content", "ai_parsing_usage"]
-    yaml_schema_validation: true
-    field_completeness: "All specified fields must be populated"
-    
-  functionality:
-    api_contract_compliance: "All endpoints match OpenAPI specification"
-    discord_integration: "Messages post and fetch successfully"
-    error_handling: "Structured error responses for all failure modes"
-    rate_limiting: "Discord API limits respected"
+    target_modules: ["src/api","src/discord"]
+    test_types: ["unit","integration","e2e"]
+    mock_external: "Discord & outbound HTTP mocked in tests"
 
+# ======================
+# TESTING REQUIREMENTS
+# ======================
 testing_requirements:
   unit_tests:
     framework: "pytest + pytest-asyncio"
-    isolation: "Mock all external dependencies"
-    coverage_target: "Individual module >85%"
-    naming: "test_function_name_scenario"
-    
+    isolation: "Mock external deps"
+    coverage_target: "Per-module ≥85% where practical"
+    naming: "test_functionname_scenario"
   integration_tests:
     scope: "Service boundary validation"
-    mock_strategy: "Mock Discord API with realistic responses"
-    scenarios: ["happy_path", "error_conditions", "edge_cases"]
-    
+    discord: "Mocked discord.py client with realistic responses"
+    scenarios: ["happy_path","error_conditions","edge_cases"]
   end_to_end_tests:
-    scope: "Complete workflow validation"
+    scope: "Full strategy flow"
     scenarios:
-      - "Create thread -> Post message -> Fetch messages"
-      - "Multi-AI conversation simulation"
-      - "Rate limiting under load"
-      - "Message splitting and attribution"
+      - "Create thread → Post message → Fetch messages"
+      - "Multi-AI collaboration (Chairman + Claude + ChatGPT)"
+      - "Rate limiting under burst"
+      - "Message splitting & code-fence preservation"
 
+# ======================
+# COMPLETION CRITERIA
+# ======================
 completion_criteria:
   phase_specific_requirements:
-    phase_0: "All 7 YAML documents complete with required sections"
-    phase_1: "OpenAPI schema validates, all endpoints defined"
-    phase_2: "Directory structure created, dependencies installable"
-    phase_3: "Discord bot functional, permissions validated"
-    phase_4: "FastAPI app starts, health endpoint responds"
-    phase_5: "All API endpoints implemented with realistic mocks"
-    phase_6: "Real Discord integration replaces mocks successfully"
-    phase_7: "Test suite passes with >80% coverage"
-    phase_8: "Container builds and runs successfully"
-    phase_9: "End-to-end multi-AI workflow validated"
-    
+    phase_0: "All Phase‑0 governance docs complete and validated"
+    phase_1: "OpenAPI schema validates; all endpoints defined"
+    phase_2: "Directory scaffold present; deps install cleanly"
+    phase_3: "Discord bot configured; permissions verified"
+    phase_4: "FastAPI app starts; /v1/system/health responds 200"
+    phase_5: "Strategy endpoints implemented with realistic mocks"
+    phase_6: "Mocks replaced by real Discord integration"
+    phase_7: "Test suite passes; coverage ≥80% (src/api & src/discord)"
+    phase_8: "Container builds & runs; health passes"
+    phase_9: "End‑to‑end multi‑AI session validated & documented"
   overall_mvp_criteria:
     - "Chairman can create threads via Discord UI"
-    - "Claude can post messages via MCP integration"
-    - "ChatGPT can post messages via Custom GPT"
-    - "All agents can read each other's messages"
-    - "Message attribution displays correctly"
-    - "Rate limiting prevents API violations"
+    - "Claude posts via MCP; ChatGPT posts via Custom GPT"
+    - "All agents read each other; attribution visible"
+    - "Rate limiting prevents API violations; queue semantics verified"
     - "System handles typical conversation loads"
 
+# =====================
+# VALIDATION PROCEDURES
+# =====================
 validation_procedures:
   automated_checks:
-    yaml_validation: "Schema validation for all YAML documents"
-    file_existence: "All specified deliverables present"
-    syntax_validation: "Python syntax checking with mypy"
-    test_execution: "Automated test suite execution"
-    
+    yaml_validation: "Schema validation for all YAML docs"
+    file_existence: "All declared deliverables exist"
+    openapi_validation: "openapi-spec-validator consilium-openapi-v1.1.yaml"
+    syntax_type_check: "mypy --strict ."
+    tests: "pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80"
   manual_verification:
-    functional_testing: "Manual validation of core features"
-    integration_validation: "External service connectivity testing"
-    user_experience: "Chairman workflow validation"
-    performance_check: "Response time and resource usage validation"
-    
+    functional_testing: "Discord message flow works (create/post/fetch)"
+    integration_validation: "External service connectivity"
+    user_experience: "Chairman workflow validated"
+    performance_check: "Response time & resource usage tracked"
+
+# ==================
+# ACCEPTANCE (CI Gate)
+# ==================
+acceptance:
+  ci_gate: |
+    ruff .
+    mypy --strict .
+    openapi-spec-validator consilium-openapi-v1.1.yaml
+    pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80
+  expected: "All checks succeed; coverage ≥80%; schema valid."
+  rollback: "git checkout -- 00_VALIDATION_FRAMEWORK.yml"
+
+# ===============
+# AI PARSING USAGE
+# ===============
 ai_parsing_usage:
   quality_enforcement: "quality_gates.*"
   test_requirements: "testing_requirements"
   completion_validation: "completion_criteria.phase_specific_requirements[current_phase]"
+  validation_procedures: "validation_procedures.*"
+  acceptance_check: "acceptance.*"
+  

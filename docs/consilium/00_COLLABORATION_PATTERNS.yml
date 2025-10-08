@@ -1,63 +1,126 @@
-# Phase 0: Multi-AI Collaboration Patterns
-# Interaction protocols and standards for AI agents
+---
+doc_type: COLLABORATION
+template_version: 1.1.0
+doc_title: "Phase 0 — Multi‑AI Collaboration Patterns"
+status: DRAFT
+created_utc: "2025-10-08T10:45:00Z"
+last_updated_utc: "2025-10-08T10:45:00Z"
 
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+update_protocol: "tense_management"
+audience: [chairman, copilot, ai_agents, human_developers]
+
+# ============
+# AI AGENTS
+# ============
 ai_agents:
   claude:
     protocol: "mcp"
     connection: "Model Context Protocol server"
     configuration_file: "~/.config/claude/mcp_servers.json"
-    authentication: "API key header"
-    capabilities: ["thread_creation", "message_posting", "message_reading"]
+    authentication: "X-Consilium-Api-Key"
+    capabilities: ["thread_creation","message_posting","message_reading"]
   chatgpt:
     protocol: "custom_gpt"
-    connection: "OpenAPI schema import"
-    authentication: "API key configuration"
-    capabilities: ["thread_creation", "message_posting", "message_reading"]
+    connection: "OpenAPI actions (import from spec)"
+    authentication: "X-Consilium-Api-Key"
+    capabilities: ["thread_creation","message_posting","message_reading"]
   chairman:
     protocol: "discord_ui"
-    connection: "Direct Discord client interface"
+    connection: "Discord client interface"
     authentication: "Discord user session"
-    capabilities: ["thread_creation", "message_posting", "message_reading", "moderation"]
-    
+    capabilities: ["thread_creation","message_posting","message_reading","moderation"]
+
+# =====================
+# MESSAGE ATTRIBUTION
+# =====================
 message_attribution:
   required_fields:
     agent: "Logical agent name (Claude, ChatGPT, Chairman)"
-    model: "Model identifier string (claude-3-5-sonnet, gpt-4, human)"
-    run_id: "Unique identifier for the producing run/invocation"
-    timestamp: "ISO 8601 timestamp of message creation"
-  attribution_display:
+    model: "Model identifier (e.g., claude-3-5, gpt-5-thinking, human)"
+    run_id: "Unique ID for the producing run/invocation"
+  display:
     format: "embed_footer"
     template: "Posted by {agent} ({model}) - Run: {run_id}"
-    
+  schema_ref:
+    # Mirrors OpenAPI components.schemas.Author
+    author_fields: ["agent","model","run_id"]
+
+# ==================
+# CONVERSATION FLOW
+# ==================
 conversation_flow:
   thread_creation:
     initiator: "Any agent (Claude, ChatGPT, Chairman)"
     title_format: "YYYY-MM-DD · Decision Topic"
-    seed_message: "Optional brief or context setting"
+    seed_message: "Optional context-setting brief"
+    endpoint: "POST /v1/strategy/start-thread"
   message_posting:
-    attribution: "Required for all messages"
-    rate_limiting: "Handled by relay service"
-    message_splitting: "Automatic for >2000 characters"
-    formatting: "Markdown preserved across splits"
+    attribution: "Required"
+    endpoint: "POST /v1/strategy/post"
+    idempotency:
+      header: "X-Idempotency-Key (optional)"
+      behavior: "Safe retries; relay deduplicates"
+    rate_limiting:
+      queue_behavior: "202 + Retry-After; client may poll fetch"
+    message_splitting:
+      max_length: 2000
+      preserve_markdown: true
+      code_fence_protection: true
   response_handling:
-    threading: "Discord native reply system"
-    context_preservation: "Message history via fetch endpoint"
-    
+    threading: "Discord native replies"
+    history: "GET /v1/strategy/fetch (use after_ts for incremental reads)"
+
+# ====================
+# DISCORD INTEGRATION
+# ====================
 discord_integration:
   channel_setup:
     parent_channel: "#consilium-architecture"
-    thread_creation: "Automatic via API"
-    permissions: "Bot has Send Messages, Read History, Create Threads"
+    permissions: ["Send Messages","Read Message History","Create Public Threads","Send Messages in Threads","Embed Links"]
   rate_limiting:
-    strategy: "Token bucket algorithm"
-    discord_limits: "50 requests per second"
-    queue_management: "202 Accepted responses when queued"
+    algorithm: "Token bucket (relay-side)"
+    discord_limits_hint: "Follow Discord constraints; avoid 429"
+    headers:
+      queued: "Retry-After"
+      quota_hint: "X-RateLimit-Remaining (relay-internal)"
   message_handling:
-    max_length: 2000
-    splitting_algorithm: "Preserve markdown, split on sentences"
+    splitting_algorithm: "Preserve code fences; split on safe boundaries"
     code_fence_protection: true
-    
-ai_parsing_usage:
-  client_configuration: "ai_agents.*"
-  message_requirements: "message_attribution.required_fields"
-  integration_patterns: "discord_integration"
+
+# ====================
+# GOVERNANCE PRINCIPLES
+# ====================
+governance:
+  authority:
+    - "Human authority is non‑negotiable; Chairman moderates."
+    - "Disagreement is a feature; contrarian inputs are welcome."
+    - "Process over speed; document assumptions and decisions."
+  persistence:
+    - "Threads produce durable artifacts (decision minutes, ADRs)."
+    - "Attribution stays in record for traceability."
+
+# ===============
+# CONFORMANCE
+# ===============
+conformance:
+  openapi_contract: "consilium-openapi-v1.1.yaml"
+  headers:
+    auth_header: "X-Consilium-Api-Key"
+    idempotency_header: "X-Idempotency-Key (optional)"
+  error_model_keys: ["error","message","details"]
+  validation:
+    commands: |
+      openapi-spec-validator consilium-openapi-v1.1.yaml
+      python - <<'PY'
+      import sys, pathlib
+      doc = pathlib.Path('00_COLLABORATION_PATTERNS.yml').read_text(encoding='utf-8')
+      for needle in ("ai_agents:", "message_attribution:", "conversation_flow:", "discord_integration:", "governance:"):
+          assert needle in doc, f"Missing section: {needle}"
+      print("✓ Collaboration patterns validated")
+      PY
+    expected: "Spec validates and required sections exist."

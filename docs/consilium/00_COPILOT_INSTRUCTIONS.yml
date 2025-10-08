@@ -1,114 +1,139 @@
-# Phase 0: GitHub Copilot Instructions
-# Direct automation guidance and code generation rules
+---
+doc_type: COPILOT_INSTRUCTIONS
+template_version: 1.1.0
+doc_title: "Phase 0 — GitHub Copilot Instructions"
+status: DRAFT
+created_utc: "2025-10-08T10:45:00Z"
+last_updated_utc: "2025-10-08T10:45:00Z"
 
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+update_protocol: "tense_management"
+audience: [copilot, ai_agents, human_developers]
+
+# ==========================
+# CODE GENERATION PATTERNS
+# ==========================
 code_generation:
   patterns:
     fastapi_routes:
-      - "Use dependency injection for database, config, logging"
-      - "Include comprehensive input validation with Pydantic"
-      - "Return structured error responses matching OpenAPI schema"
-      - "Add correlation ID to all responses for tracing"
+      - "Use Depends(...) for config/logging clients; keep handlers async."
+      - "Validate with Pydantic v2 models exactly matching the OpenAPI schema."
+      - "Return structured Error bodies (error, message, details)."
+      - "Honor headers: X-Consilium-Api-Key, X-Idempotency-Key (when applicable)."
+      - "Add request correlation (X-Request-ID via middleware)."
     discord_integration:
-      - "Use async/await consistently with discord.py"
-      - "Implement message splitting with markdown preservation"
-      - "Include rate limiting with token bucket algorithm"
-      - "Add proper error handling and connection recovery"
+      - "Use discord.py async client; never block the event loop."
+      - "Split messages at 2000 chars; preserve markdown and code fences."
+      - "Queue sends under rate pressure; return 202 + Retry-After."
+      - "Attach attribution via embed footer (agent/model/run_id)."
     pydantic_models:
-      - "Include field validation and custom validators"
-      - "Match OpenAPI schema exactly"
-      - "Add serialization aliases where needed"
-      - "Include docstrings for model fields"
-      
+      - "Fields, enums, and formats must mirror the OpenAPI components."
+      - "Add validators for semantic constraints (lengths, patterns)."
+      - "Keep model docstrings concise; prefer schema examples."
   templates:
     route_handler: |
-      @router.post("/endpoint")
+      @router.post("/v1/example")
       async def handler(
           request: RequestModel,
-          dependency: Dependency = Depends(get_dependency)
+          ok: bool = Depends(verify_api_key),
       ) -> ResponseModel:
-          """Handler description."""
+          """
+          Example handler.
+          """
           try:
-              # Implementation
+              # business logic
               return ResponseModel(...)
-          except Exception as e:
-              raise HTTPException(status_code=500, detail=str(e))
-              
+          except DomainError as e:
+              raise HTTPException(status_code=400, detail={"error":"bad_request","message":str(e)})
     pydantic_model: |
-      class ModelName(BaseModel):
-          """Model description."""
-          field: str = Field(..., description="Field description")
-          
-          @validator('field')
-          def validate_field(cls, v):
-              # Validation logic
-              return v
-              
-  style_preferences:
-    line_length: 80
-    string_quotes: "double"
-    trailing_commas: true
-    type_hints: "always_explicit"
+      class Example(BaseModel):
+          """Example model."""
+          name: str = Field(..., min_length=1, max_length=100)
 
+# =====================
+# STYLE & QUALITY BARS
+# =====================
+style_preferences:
+  line_length: 80
+  string_quotes: "double"
+  trailing_commas: true
+  type_hints: "always_explicit"
+  docstrings: "google_style"
+
+quality_gates:
+  lint: "ruff ."
+  types: "mypy ."
+  tests: "pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80"
+  expected: "All commands exit 0; coverage ≥80%."
+
+# ======================
+# FILE CREATION RULES
+# ======================
 file_creation:
   directory_structure:
     src_api: "FastAPI routes, models, dependencies"
-    src_discord: "Discord client, message handlers, rate limiting"
-    src_core: "Configuration, logging, exceptions, utilities"
+    src_discord: "Discord client, message handler, rate limiter"
+    src_core: "Configuration, logging, middleware"
     tests: "Mirror src structure with test_ prefix"
-    
   naming_conventions:
     files: "snake_case.py"
     classes: "PascalCase"
     functions: "snake_case"
     constants: "UPPER_SNAKE_CASE"
     test_files: "test_module_name.py"
-    
   boilerplate:
     python_file_header: |
       """Module description.
-      
+
       This module provides...
       """
       from __future__ import annotations
-      
-    test_file_header: |
-      """Tests for module_name."""
-      import pytest
-      from unittest.mock import Mock, patch
-      
+
+# ===================
+# AUTOMATION RULES
+# ===================
 automation_rules:
   when_to_automate:
-    - "Code generation for well-defined specifications"
-    - "Boilerplate creation following established patterns"
-    - "Test scaffolding based on implementation structure"
-    - "Configuration file generation from templates"
-    
+    - "Generate code directly from OpenAPI and phase BLUEPRINT/ARCHITECTURE."
+    - "Scaffold boilerplate and tests mirroring module structure."
+    - "Create configuration and deployment files from templates."
   manual_intervention_points:
-    - "Discord bot token generation and setup"
-    - "Environment-specific configuration values"
-    - "Manual testing and validation procedures"
-    - "Deployment credentials and secrets management"
-    
+    - "Discord bot token/IDs (.env)."
+    - "Provider secrets & deployment credentials."
+    - "Manual live-session validation in Phase 9."
   validation_before_generation:
-    - "Read relevant Phase 0 documents for context"
-    - "Verify OpenAPI schema compliance for API code"
-    - "Check dependency requirements are met"
-    - "Ensure phase completion criteria can be satisfied"
+    - "Read 00_PROJECT_MISSION.yml, 00_AI_AGENT_RULES.yml."
+    - "Load OpenAPI: consilium-openapi-v1.1.yaml."
+    - "Read current phase BLUEPRINT and ARCHITECTURE for requirements."
+    - "Ensure CI gates can be satisfied by generated code."
 
+# ====================
+# CONTEXT INJECTION
+# ====================
 context_injection:
   relevant_files:
-    - "Always reference 00_PROJECT_MISSION.yml for MVP context"
-    - "Use 00_AI_AGENT_RULES.yml for coding standards"
-    - "Check 00_TECHNICAL_CONSTRAINTS.yml for technology limits"
-    - "Reference current phase BLUEPRINT.yml for requirements"
-    
+    - "00_PROJECT_MISSION.yml"
+    - "00_AI_AGENT_RULES.yml"
+    - "00_TECHNICAL_CONSTRAINTS.yml"
+    - "consilium-openapi-v1.1.yaml"
+    - "phase_*_BLUEPRINT.yaml"
+    - "phase_*_ARCHITECTURE.yaml"
+    - "phase_*_IMPLEMENTATION.yaml"
   reference_patterns:
     phase_context: "/docs/consilium/{phase_number}_BLUEPRINT.yml"
     implementation_guide: "/docs/consilium/{phase_number}_IMPLEMENTATION.yml"
     technical_decisions: "/docs/consilium/TECHNICAL_DECISIONS.yml"
     progress_tracking: "/docs/consilium/PHASE_NOTES.txt"
-    
-ai_parsing_usage:
-  code_patterns: "code_generation.patterns.*"
-  automation_decisions: "automation_rules.when_to_automate"
-  context_files: "context_injection.relevant_files"
+
+# ==============
+# ACCEPTANCE
+# ==============
+acceptance:
+  ci_gate: |
+    ruff . && mypy . && pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80
+  expected: "All checks succeed."
+  rollback: "git checkout -- 00_COPILOT_INSTRUCTIONS.yml"

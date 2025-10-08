@@ -1,61 +1,131 @@
-# Phase 0: AI Agent Rules and Coding Standards
-# Behavioral rules and coding standards for AI agents
+---
+doc_type: RULES
+template_version: 1.1.0
+doc_title: "Phase 0 — AI Agent Rules & Coding Standards"
+status: DRAFT
+created_utc: "2025-10-08T10:00:00Z"
+last_updated_utc: "2025-10-08T10:00:00Z"
 
+# Conflict resolution precedence for the whole project (Phase-0 canon)
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"      # Draft (future tense) → Complete (past tense)
+
+cross_doc_relationship:
+  consumes: []
+  produces: [standards, validation_gates]
+  updates: ["TECHNICAL_DECISIONS.yml", "PHASE_NOTES.txt"]
+  references:
+    - "00_COPILOT_README.md"          # operational coding guidance
+    - "consilium-openapi-v1.1.yaml"   # canonical API contract
+
+# =========================
+# CODING & STYLE STANDARDS
+# =========================
 coding_standards:
-  python_conventions:
+  python:
     pep8: true
     line_length: 80
     type_hints: "mandatory"
     docstrings: "google_style"
+    imports:
+      order: "stdlib -> third_party -> local"
+      absolute_imports: true
   async_patterns:
-    async_def: "required_for_fastapi_and_discord"
+    fastapi_routes: "async_def_only"
+    discord_client: "async_def_only"
     event_loop_blocking: "never_allowed"
-  imports:
-    organization: "stdlib -> third_party -> local"
-    absolute_imports: true
-    
-file_organization:
-  src_structure:
-    api: "FastAPI routes, dependencies, middleware"
-    discord: "Discord client, message handling, rate limiting"
-    core: "Configuration, logging, utilities, exceptions"
-    main: "FastAPI application entrypoint"
-  import_patterns:
-    - "from src.core.config import settings"
-    - "from src.api.models import MessageRequest"
-  naming_conventions:
+  naming:
     files: "snake_case.py"
     classes: "PascalCase"
     functions: "snake_case"
     constants: "UPPER_CASE"
-    
+
+# ================
+# FILE ORGANIZATION
+# ================
+file_organization:
+  src_structure:
+    api: "FastAPI routes, models, dependencies"
+    discord: "Discord client, message handling, rate limiting"
+    core: "Configuration, logging, utilities"
+    main: "FastAPI application entrypoint"
+  tests_structure: "tests/ mirrors src/; unit+integration"
+
+# ==================
+# QUALITY & CI GATES
+# ==================
 quality_gates:
   testing:
     framework: "pytest + pytest-asyncio"
     coverage_minimum: 80
     mock_external_apis: true
   validation:
-    type_checking: "mypy strict mode"
-    code_formatting: "black + isort"
-    linting: "flake8"
-    
+    type_checking: "mypy --strict"
+    linting: "ruff"
+    formatting: "black + isort (configured in pyproject.toml)"
+  acceptance_ci:
+    commands: |
+      ruff .
+      mypy .
+      pytest -q
+    expected: "All commands exit 0."
+
+# ==============
+# AI BEHAVIOR SLO
+# ==============
 ai_behavior:
   constraints:
-    - "No hardcoded secrets - use environment variables"
-    - "All endpoints return structured JSON error objects"
-    - "Structured JSON logging with correlation IDs"
-    - "API key validation required on all endpoints"
+    - "No hardcoded secrets — read from environment (via Pydantic BaseSettings)."
+    - "Return structured JSON error bodies per OpenAPI error schema."
+    - "Structured JSON logging with request IDs; never log secrets."
+    - "Require X-Consilium-Api-Key on all Strategy endpoints."
   expectations:
-    - "Generate complete, working code implementations"
-    - "Include comprehensive error handling"
-    - "Follow established patterns consistently"
-    - "Validate against quality gates before completion"
+    - "Generate complete, working code aligned to the OpenAPI contract."
+    - "Include comprehensive error handling and input validation."
+    - "Follow repository structure and patterns consistently."
+    - "Run CI gates locally before marking a phase COMPLETE."
   automation_rules:
-    - "Read Phase 0 documents before any code generation"
-    - "Reference OpenAPI schema as source of truth"
-    - "Validate phase completion before proceeding"
-    
-ai_parsing_usage:
-  code_generation_rules: "coding_standards + ai_behavior.expectations"
-  validation_requirements: "quality_gates"
-  constraint_enforcement: "ai_behavior.constraints"
+    - "Read Phase‑0 docs and 00_COPILOT_README.md before code generation."
+    - "Treat consilium-openapi-v1.1.yaml as source of truth for APIs."
+    - "Honor idempotency and rate‑limit semantics documented in the spec."
+
+# ====================
+# OPENAPI CONFORMANCE
+# ====================
+openapi_contract:
+  schema_path: "consilium-openapi-v1.1.yaml"
+  headers:
+    auth_header: "X-Consilium-Api-Key"
+    idempotency_header: "X-Idempotency-Key (optional)"
+  error_model_keys: ["error", "message", "details"]
+
+# ==============
+# ACCEPTANCE GATE
+# ==============
+acceptance:
+  ci_gate: |
+    ruff . && mypy . && pytest -q
+  expected: "Ruff/mypy/pytest all succeed (exit code 0)."
+  rollback: "git checkout -- *"
+  post_validation:
+    commands: |
+      python - <<'PY'
+      import sys, pathlib
+      # Simple presence and content checks (non-exhaustive) for MVP
+      schema = pathlib.Path('consilium-openapi-v1.1.yaml').read_text(encoding='utf-8')
+      required_snippets = [
+          '/v1/system/health',
+          '/v1/system/info',
+          '/v1/strategy/start-thread',
+          '/v1/strategy/post',
+          '/v1/strategy/fetch',
+      ]
+      missing = [s for s in required_snippets if s not in schema]
+      sys.exit(1 if missing else 0)
+      PY

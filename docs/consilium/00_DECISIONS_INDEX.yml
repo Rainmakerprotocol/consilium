@@ -1,0 +1,85 @@
+---
+doc_type: DECISIONS_INDEX
+template_version: 1.1.0
+doc_title: "Phase 0 — Decisions Index (Cross-link to Phase Blueprints)"
+status: DRAFT
+created_utc: "2025-10-08T11:45:00Z"
+last_updated_utc: "2025-10-08T11:45:00Z"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+update_protocol: "tense_management"
+audience: [copilot, ai_agents, human_developers, chairman]
+
+# Purpose:
+#   Provide a machine- and human-readable index mapping phase blueprints
+#   to the canonical TECHNICAL_DECISIONS.yml entries they must reference.
+
+index:
+  phase_01_blueprint:
+    references:
+      - decisions.framework_selection
+      - decisions.discord_library
+      - decisions.authentication_approach
+  phase_02_blueprint:
+    references:
+      - decisions.framework_selection
+  phase_03_blueprint:
+    references:
+      - decisions.discord_library
+      - decisions.authentication_approach
+  phase_04_blueprint:
+    references:
+      - decisions.framework_selection
+  phase_05_blueprint:
+    references:
+      - decisions.authentication_approach
+  phase_06_blueprint:
+    references:
+      - decisions.discord_library
+      - decisions.rate_limiting_strategy
+      - decisions.message_attribution
+  phase_07_blueprint:
+    references:
+      - decisions.rate_limiting_strategy
+      - decisions.framework_selection
+  phase_08_blueprint:
+    references:
+      - decisions.deployment_target
+      - decisions.framework_selection
+  phase_09_blueprint:
+    references:
+      - decisions.deployment_target
+      - decisions.authentication_approach
+
+conformance:
+  source_of_truth: "TECHNICAL_DECISIONS.yml"
+  rule: "Phase BLUEPRINT docs should cross-link to the listed decision keys."
+
+acceptance:
+  ci_gate: |
+    python - <<'PY'
+    import sys, yaml, pathlib
+    # Load decisions index and decisions log
+    idx = yaml.safe_load(pathlib.Path("00_DECISIONS_INDEX.yml").read_text(encoding="utf-8"))
+    dec = yaml.safe_load(pathlib.Path("TECHNICAL_DECISIONS.yml").read_text(encoding="utf-8"))
+    decs = dec.get("decisions", {})
+    missing = []
+    for phase, payload in idx.get("index", {}).items():
+        for ref in payload.get("references", []):
+            key = ref.split(".", 1)[-1]
+            if key not in decs:
+                missing.append(f"{phase}:{key}")
+    if missing:
+        print("Missing decision mappings:", ", ".join(missing))
+        sys.exit(1)
+    print("✓ Decisions index validated")
+    PY
+  expected: "All referenced decision keys exist in TECHNICAL_DECISIONS.yml."
+  rollback: "git checkout -- 00_DECISIONS_INDEX.yml"
+
+ai_parsing_usage:
+  phase_blueprint_hook: "index.*.references[]  # use to auto-insert decision links/tables into BLUEPRINT docs"

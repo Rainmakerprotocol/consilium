@@ -1,119 +1,135 @@
 # API Documentation
-# Comprehensive API reference and usage patterns
+# Human-readable reference derived from the canonical OpenAPI (consilium-openapi-v1.1.yaml)
+# Keep this document aligned with the spec; do not hand-edit endpoints without updating the OpenAPI.
 
 base_configuration:
-  base_url: "https://consilium-relay.railway.app"
+  base_url: "https://{host}"
+  examples:
+    local: "https://relay.consilium.local"
+    deployed: "https://example.com"
   authentication:
     type: "API Key"
-    header: "X-API-Key"
+    header: "X-Consilium-Api-Key"
     required: true
+  idempotency:
+    header: "X-Idempotency-Key"
+    required: false
   content_type: "application/json"
-  
+
 endpoints:
-  health_check:
-    path: "/health"
+  system_health:
+    path: "/v1/system/health"
     method: "GET"
-    description: "System health and version information"
+    description: "Liveness/Readiness probe for deployments & containers"
     authentication_required: false
     responses:
       200:
-        description: "System operational"
-        schema:
-          status: "healthy"
-          version: "1.0.0"
-          timestamp: "2024-01-15T10:30:00Z"
-      
-  create_thread:
-    path: "/threads"
-    method: "POST"
-    description: "Create new Discord thread for AI collaboration"
-    authentication_required: true
-    request_schema:
-      title: "string (required) - Thread title"
-      initial_message: "string (optional) - First message content"
-      agent: "string (required) - Creating agent name"
-      model: "string (required) - Model identifier"
-      run_id: "string (required) - Unique run identifier"
-    responses:
-      201:
-        description: "Thread created successfully"
-        schema:
-          thread_id: "string - Discord thread ID"
-          url: "string - Discord thread URL"
-      400: "Invalid request parameters"
-      401: "Authentication required"
-      500: "Internal server error"
-      
-  post_message:
-    path: "/threads/{thread_id}/messages"
-    method: "POST"
-    description: "Post message to existing Discord thread"
-    authentication_required: true
-    path_parameters:
-      thread_id: "string (required) - Discord thread ID"
-    request_schema:
-      content: "string (required) - Message content"
-      agent: "string (required) - Posting agent name"
-      model: "string (required) - Model identifier"
-      run_id: "string (required) - Unique run identifier"
-    responses:
-      201:
-        description: "Message posted successfully"
-        schema:
-          message_id: "string - Discord message ID"
-          url: "string - Discord message URL"
-      400: "Invalid request parameters"
-      401: "Authentication required"
-      404: "Thread not found"
-      500: "Internal server error"
-      
-  get_messages:
-    path: "/threads/{thread_id}/messages"
+        schema_ref: "HealthResponse"
+        notes: "Includes optional checks map (e.g., discord gateway: connected)"
+
+  system_info:
+    path: "/v1/system/info"
     method: "GET"
-    description: "Retrieve messages from Discord thread"
-    authentication_required: true
-    path_parameters:
-      thread_id: "string (required) - Discord thread ID"
-    query_parameters:
-      limit: "integer (optional, default=50) - Number of messages to retrieve"
-      after: "string (optional) - Message ID to start after"
+    description: "Service metadata (version, git_sha, build_time)"
+    authentication_required: false
     responses:
       200:
-        description: "Messages retrieved successfully"
-        schema:
-          messages:
-            - message_id: "string"
-              content: "string"
-              author: "string"
-              timestamp: "string (ISO 8601)"
-              attribution:
-                agent: "string"
-                model: "string"
-                run_id: "string"
-      401: "Authentication required"
-      404: "Thread not found"
-      500: "Internal server error"
+        schema_ref: "InfoResponse"
+
+  start_thread:
+    path: "/v1/strategy/start-thread"
+    method: "POST"
+    description: "Create a new Discord thread; optional seed message as first post"
+    authentication_required: true
+    request_schema_ref: "StartThreadRequest"
+    responses:
+      201:
+        schema_ref: "StartThreadResponse"
+      400: "BadRequest"
+      401: "Unauthorized"
+      429: "Rate limited (Retry-After header)"
+
+  post_message:
+    path: "/v1/strategy/post"
+    method: "POST"
+    description: "Post an attributed message to a thread; server handles splitting/queueing"
+    authentication_required: true
+    headers:
+      - "X-Idempotency-Key (optional)"
+    request_schema_ref: "PostMessageRequest"
+    responses:
+      201:
+        schema_ref: "PostMessageResponse"
+        headers:
+          - "X-RateLimit-Remaining"
+      202:
+        schema_ref: "PostMessageResponse"
+        headers:
+          - "Retry-After"
+      400: "BadRequest"
+      401: "Unauthorized"
+      404: "NotFound"
+      429: "Rate limited (Retry-After header)"
+
+  fetch_messages:
+    path: "/v1/strategy/fetch"
+    method: "GET"
+    description: "Retrieve normalized, attributed messages; use after_ts for incremental polling"
+    authentication_required: true
+    query_parameters:
+      thread_id: "string (required)"
+      after_ts: "string (optional, ISO 8601)"
+      limit: "integer (1..200, default 50)"
+    responses:
+      200:
+        schema_ref: "FetchMessagesResponse"
+      400: "BadRequest"
+      401: "Unauthorized"
+      404: "NotFound"
+
+schemas (canonical):
+  - "HealthResponse"
+  - "InfoResponse"
+  - "StartThreadRequest"
+  - "StartThreadResponse"
+  - "PostMessageRequest"
+  - "PostMessageResponse"
+  - "FetchMessagesResponse"
+  - "Message"
+  - "Author"
+  - "Error"
 
 usage_patterns:
+  authentication:
+    - "Send API key in 'X-Consilium-Api-Key' for all Strategy endpoints"
   ai_agent_workflow:
-    - "Authenticate with API key in X-API-Key header"
-    - "Create thread using POST /threads with attribution data"
-    - "Post messages using POST /threads/{id}/messages"
-    - "Retrieve conversation history using GET /threads/{id}/messages"
-    
+    - "Create a decision thread with POST /v1/strategy/start-thread"
+    - "Post structured analysis with POST /v1/strategy/post (include author.agent/model/run_id)"
+    - "Poll GET /v1/strategy/fetch using after_ts for incremental fetch"
+  idempotent_retries:
+    - "Provide X-Idempotency-Key on client retries of POST /v1/strategy/post"
   error_handling:
-    - "Check response status codes for success/failure"
-    - "Parse error responses for structured error information"
-    - "Implement retry logic with exponential backoff for 5xx errors"
-    - "Validate request schemas before API calls"
-    
+    - "Parse 'error' & 'message' from Error schema"
+    - "Respect 429 Retry-After header and backoff"
   rate_limiting:
-    - "Service implements token bucket rate limiting"
-    - "Rate limit headers included in responses"
-    - "429 Too Many Requests returned when limits exceeded"
-    - "Respect rate limit headers and implement backoff"
+    - "Server may return 202 for queued sends and 201 for immediate sends"
+    - "X-RateLimit-Remaining header indicates remaining quota (relay-internal)"
 
-ai_parsing_usage:
-  endpoint_reference: "endpoints.*"
-  integration_patterns: "usage_patterns.ai_agent_workflow"
-  error_handling: "usage_patterns.error_handling"
+conformance:
+  source_of_truth: "consilium-openapi-v1.1.yaml"
+  validation:
+    commands: |
+      # Validate OpenAPI and confirm required paths exist
+      openapi-spec-validator consilium-openapi-v1.1.yaml
+      python - <<'PY'
+      import sys, pathlib, re
+      spec = pathlib.Path('consilium-openapi-v1.1.yaml').read_text(encoding='utf-8')
+      need = ['/v1/system/health','/v1/system/info','/v1/strategy/start-thread','/v1/strategy/post','/v1/strategy/fetch','X-Consilium-Api-Key']
+      missing = [n for n in need if n not in spec]
+      sys.exit(1 if missing else 0)
+      PY
+    expected: "Spec validates; presence checks pass."
+  update_instructions: "Update this doc when the OpenAPI schema changes."
+  review_frequency: "Review and update at the end of each phase or when major changes occur"
+  deprecation_policy: "Remove deprecated endpoints in major releases"
+  

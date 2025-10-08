@@ -53,3 +53,27 @@ MVP Success Criteria:
 - Rate limiting prevents Discord API violations
 - System handles typical conversation loads reliably
 - Chairman can observe and participate in AI discussions
+
+---
+
+## Machine‑Readable Progress Keys
+phase_states:
+  0: COMPLETE
+  1: IN_PROGRESS
+  2–9: PENDING
+
+next_expected_action:
+  - "Complete Phase 1: update OpenAPI schema and regenerate API docs."
+  - "Run validation: openapi‑spec‑validator, ruff, mypy --strict, pytest."
+
+---
+
+## Human Notes
+- The repository is now governed entirely by AI protocols.
+- Developers act as validators and deployers.
+- Phase transitions must pass the CI gates in 00_VALIDATION_FRAMEWORK.yml.
+
+---
+
+## Agent Updates
+[timestamp] Jarvis2: Validated Phase‑0 baseline; Phase‑1 schema generation initiated.

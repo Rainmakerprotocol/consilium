@@ -1,39 +1,80 @@
-# Phase 0: Project Mission and MVP Definition
-# Structured project data for AI agents
+---
+doc_type: MISSION
+template_version: 1.1.0
+doc_title: "Phase 0 — Project Mission & MVP Definition"
+status: DRAFT
+created_utc: "2025-10-08T10:00:00Z"
+last_updated_utc: "2025-10-08T10:00:00Z"
+
+authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
+
+audience: [copilot, ai_agents, human_developers]
+update_protocol: "tense_management"
+
+cross_doc_relationship:
+  consumes: []
+  produces: ["product_context", "success_criteria"]
+  references:
+    - "00_COPILOT_README.md"
+    - "consilium-openapi-v1.1.yaml"
 
 project:
   name: "consilium-relay"
-  description: "Multi-AI collaboration relay service using Discord as message board"
-  mvp_definition: "Chairman + Claude + ChatGPT all posting and reading messages in same Discord thread via relay service"
-  
+  description: "Multi‑AI collaboration relay using Discord as the message board."
+  scope_notes:
+    - "Single‑server, single‑channel MVP (no multi‑tenancy)."
+    - "Human‑in‑the‑loop: Chairman moderates; AI agents advise."
+
+mvp_definition:
+  statement: "Chairman, Claude, and ChatGPT all post and read messages in the same Discord thread via the relay."
+  success_criteria:
+    - "End‑to‑end thread creation, post, and fetch flows succeed."
+    - "Attribution embeds show agent/model/run_id metadata."
+    - "Rate‑limit queueing yields 202 + Retry‑After when engaged."
+    - "Health and info endpoints respond per OpenAPI contract."
+    - "Test coverage ≥80% in src/api and src/discord."
+
 stakeholders:
   chairman:
-    role: "Primary user and conversation moderator"
+    role: "Primary user and moderator"
     interface: "Discord UI"
   ai_agents:
     claude:
-      protocol: "MCP (Model Context Protocol)"
-      integration: "~/.config/claude/mcp_servers.json"
+      protocol: "MCP"
+      integration_hint: "~/.config/claude/mcp_servers.json"
     chatgpt:
       protocol: "Custom GPT"
-      integration: "OpenAPI schema import"
-      
-success_criteria:
-  - "Multi-AI conversation flows through Discord successfully"
-  - "Message attribution works correctly for all agents"
-  - "Rate limiting prevents Discord API violations"
-  - "System handles typical conversation loads reliably"
-  - "Chairman can observe and participate in AI discussions"
-  
-business_context:
-  vision: "Enable structured multi-AI decision-making through transparent Discord collaboration"
-  constraints:
-    - "Single user (Chairman) focus - no multi-tenant complexity"
-    - "MVP only - no over-engineering or enterprise features"
-    - "Personal use deployment - simple and efficient"
-  timeline: "9 phases with clear progression gates"
-  
-ai_parsing_usage:
-  primary_context: "project.mvp_definition"
-  validation_target: "success_criteria"
-  constraint_reference: "business_context.constraints"
+      integration_hint: "OpenAPI actions import"
+
+collaboration_principles:
+  - "Human authority is non‑negotiable; disagreement is a feature."
+  - "Process over speed; document assumptions and decisions."
+  - "Persistent knowledge: strategy threads and decision minutes."
+
+constraints:
+  technical:
+    - "Python 3.11, FastAPI, discord.py, Pydantic v2."
+    - "Structured JSON logging; no secrets in logs."
+    - "All configuration via environment (.env for local dev)."
+  product:
+    - "Minimal surface area: three Strategy endpoints + System endpoints."
+    - "Discord first; future UIs out of scope for MVP."
+
+validation_plan:
+  automated:
+    - "OpenAPI schema validates (spec‑validator)."
+    - "Ruff + mypy + pytest (≥80% coverage for src/api, src/discord)."
+  live_session:
+    - "Run a Consilium session with Chairman + Claude (MCP) + ChatGPT (Custom GPT)."
+    - "Verify message visibility, attribution, and fetch pagination."
+
+acceptance:
+  ci_gate: |
+    openapi-spec-validator consilium-openapi-v1.1.yaml || true
+    pytest -q --cov=src/api --cov=src/discord --cov-report=term-missing --cov-fail-under=80
+  expected: "Schema OK; tests pass with coverage ≥80%."
+  rollback: "git checkout -- 00_PROJECT_MISSION.yml"
