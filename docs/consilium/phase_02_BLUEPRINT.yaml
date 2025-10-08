@@ -31,8 +31,8 @@ cross_doc_relationship:
     - "./phase_02_ARCHITECTURE.yaml"
     - "./phase_02_IMPLEMENTATION.yaml"
   updates:
-    - "../PHASE_NOTES.md"
-    - "../TECHNICAL_DECISIONS.md"
+    - "../PHASE_NOTES.txt"
+    - "../TECHNICAL_DECISIONS.yml"
 
 ---
 

@@ -11,7 +11,7 @@ last_updated_utc: "2025-10-05T12:00:12Z"
 canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
@@ -40,8 +40,8 @@ cross_doc_relationship:
     - "./phase_05_ARCHITECTURE.yaml"
     - "./phase_05_IMPLEMENTATION.yaml"
   updates:
-    - "../PHASE_NOTES.md"
-    - "../TECHNICAL_DECISIONS.md"
+    - "../PHASE_NOTES.txt"
+    - "../TECHNICAL_DECISIONS.yml"
 
 ---
 

@@ -11,7 +11,7 @@ last_updated_utc: "2025-10-06T23:18:07Z"
 canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+  - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
@@ -21,9 +21,9 @@ update_protocol: "tense_management"
 
 cross_doc_relationship:
   consumes:
+    - "../../consilium-openapi-v1.1.yaml"
     - "./phase_07_BLUEPRINT.yaml"
     - "../00_parent/00_COPILOT_README.md"
-  - "../../consilium-openapi-v1.1.yaml"
     - "./phase_05_BLUEPRINT.yaml"
     - "./phase_05_ARCHITECTURE.yaml"
     - "./phase_05_IMPLEMENTATION.yaml"
@@ -33,8 +33,8 @@ cross_doc_relationship:
   produces:
     - "./phase_07_IMPLEMENTATION.yaml"
   updates:
-    - "../TECHNICAL_DECISIONS.md"
-    - "../PHASE_NOTES.md"
+    - "../TECHNICAL_DECISIONS.yml"
+    - "../PHASE_NOTES.txt"
 
 ---
 

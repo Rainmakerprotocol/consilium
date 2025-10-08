@@ -11,22 +11,22 @@ last_updated_utc: "2025-10-06T23:30:00Z"
 canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
-  - "BLUEPRINT"
-  - "ARCHITECTURE"
-  - "IMPLEMENTATION"
+    - "00_AI_AGENT_RULES.yml"
+    - "BLUEPRINT"
+    - "ARCHITECTURE"
+    - "IMPLEMENTATION"
 
 audience: [copilot, ai_agents, human_developers]
 update_protocol: "tense_management"
 
 cross_doc_relationship:
-  consumes:
-    - "./phase_07_BLUEPRINT.yaml"
-    - "./phase_07_ARCHITECTURE.yaml"
-    - "../00_parent/00_COPILOT_README.md"
-    - "../../consilium-openapi-v1.1.yaml"
-    - "./phase_05_IMPLEMENTATION.yaml"
-    - "./phase_06_IMPLEMENTATION.yaml"
+    consumes:
+        - "../../consilium-openapi-v1.1.yaml"
+        - "./phase_07_BLUEPRINT.yaml"
+        - "./phase_07_ARCHITECTURE.yaml"
+        - "../00_parent/00_COPILOT_README.md"
+        - "./phase_05_IMPLEMENTATION.yaml"
+        - "./phase_06_IMPLEMENTATION.yaml"
   produces:
     - "tests/conftest.py"
     - "tests/test_models.py"
@@ -34,9 +34,9 @@ cross_doc_relationship:
     - "tests/test_routes.py"
     - "tests/test_integration.py"
     - "pytest.ini"
-  updates:
-    - "../PHASE_NOTES.md"
-    - "../TECHNICAL_DECISIONS.md"
+    updates:
+        - "../PHASE_NOTES.txt"
+        - "../TECHNICAL_DECISIONS.yml"
 
 ---
 

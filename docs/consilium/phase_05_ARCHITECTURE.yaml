@@ -9,6 +9,10 @@ created_utc: '2025-10-05T14:03:31Z'
 last_updated_utc: '2025-10-05T14:03:31Z'
 canonical_spec_path: ../../consilium-openapi-v1.1.yaml
 authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
 audience:
 update_protocol: tense_management
 cross_doc_relationship:
@@ -22,8 +26,8 @@ cross_doc_relationship:
   produces:
   - ./phase_05_IMPLEMENTATION.yaml
   updates:
-  - ../TECHNICAL_DECISIONS.md
-  - ../PHASE_NOTES.md
+  - ../TECHNICAL_DECISIONS.yml
+  - ../PHASE_NOTES.txt
 copilot_instructions: '1. Purpose: Define HOW to implement Phase 5 Strategy endpoints
   with mocked behavior.
 

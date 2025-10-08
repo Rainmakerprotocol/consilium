@@ -469,7 +469,7 @@ acceptance_criteria:
     - "Tool configurations specify exact parameters"
     - "Dependency versions and purposes are documented"
     - "No ambiguities remain for Implementation phase"
-    - "TECHNICAL_DECISIONS.md updated with key design choices"
+          - "TECHNICAL_DECISIONS.yml updated with key design choices"
     - "Converted to past tense with status=COMPLETE"
 
 contract:

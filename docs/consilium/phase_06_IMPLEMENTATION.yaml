@@ -11,7 +11,7 @@ last_updated_utc: "2025-10-05T17:00:00Z"
 canonical_spec_path: "../../consilium-openapi-v1.1.yaml"
 
 authority_order:
-  - "00_AI_AGENT_RULES.md"
+    - "00_AI_AGENT_RULES.yml"
   - "BLUEPRINT"
   - "ARCHITECTURE"
   - "IMPLEMENTATION"
@@ -31,9 +31,9 @@ cross_doc_relationship:
     - "src/discord/client.py"
     - "src/discord/message_handler.py"
     - "src/api/routes.py (updated)"
-  updates:
-    - "../PHASE_NOTES.md"
-    - "../TECHNICAL_DECISIONS.md"
+    updates:
+        - "../PHASE_NOTES.txt"
+        - "../TECHNICAL_DECISIONS.yml"
 
 ---
 

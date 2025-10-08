@@ -9,6 +9,10 @@ created_utc: '2025-10-05T16:08:49Z'
 last_updated_utc: '2025-10-05T16:08:49Z'
 canonical_spec_path: ../../consilium-openapi-v1.1.yaml
 authority_order:
+  - "00_AI_AGENT_RULES.yml"
+  - "BLUEPRINT"
+  - "ARCHITECTURE"
+  - "IMPLEMENTATION"
 - 00_AI_AGENT_RULES.md
 - BLUEPRINT
 - ARCHITECTURE
@@ -32,8 +36,8 @@ cross_doc_relationship:
   produces:
   - ./phase_06_IMPLEMENTATION.yaml
   updates:
-  - ../TECHNICAL_DECISIONS.md
-  - ../PHASE_NOTES.md
+  - ../TECHNICAL_DECISIONS.yml
+  - ../PHASE_NOTES.txt
 copilot_instructions: '1. Purpose: Define HOW to implement Phase 6 by replacing mocks
   with a real discord.py client.
 
